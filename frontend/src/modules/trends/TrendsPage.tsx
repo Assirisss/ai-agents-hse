@@ -1,0 +1,137 @@
+import { useEffect, useRef, useState, type FormEvent } from 'react'
+import type { TrendCapabilities, TrendDomain, TrendMode, TrendReport } from '../../../../shared/trends'
+import { getCapabilities, researchTrends } from './api'
+import './TrendsPage.css'
+
+const domains: { id: TrendDomain; label: string }[] = [
+  { id: 'all', label: 'Все области' }, { id: 'finance', label: 'Финансы' },
+  { id: 'health', label: 'Спорт и питание' }, { id: 'wardrobe', label: 'Гардероб' },
+  { id: 'planning', label: 'Дела и календарь' },
+]
+const signalLabels = { rising: 'Рост в выборке', new: 'Нет предыдущих упоминаний', watch: 'Наблюдение' }
+const dateLabel = (date: string) => new Date(date).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' })
+
+function RecentArticles({ report }: { report: TrendReport }) {
+  const start = Date.parse(report.referenceTime) - report.request.windowDays * 86400000
+  const articles = report.articles.filter((article) => Date.parse(article.publishedAt) >= start).slice(0, 8)
+  if (!articles.length) return null
+  return (
+    <section className="recent-articles" aria-labelledby="recent-title">
+      <h2 id="recent-title">Свежие публикации</h2>
+      <ul>{articles.map((article) => (
+        <li key={article.id}>
+          <span className="mono">{article.sourceName} · {dateLabel(article.publishedAt)}</span>
+          <a href={article.url} target="_blank" rel="noopener noreferrer">{article.title}<span aria-hidden="true"> ↗</span></a>
+          <p>{article.snippet.slice(0, 200)}{article.snippet.length > 200 ? '…' : ''}</p>
+        </li>
+      ))}</ul>
+    </section>
+  )
+}
+
+export default function TrendsPage() {
+  const [domain, setDomain] = useState<TrendDomain>('all')
+  const [mode, setMode] = useState<TrendMode>('demo')
+  const [query, setQuery] = useState('')
+  const [windowDays, setWindowDays] = useState(7)
+  const [enableAi, setEnableAi] = useState(false)
+  const [capabilities, setCapabilities] = useState<TrendCapabilities | null>(null)
+  const [connectionError, setConnectionError] = useState('')
+  const [report, setReport] = useState<TrendReport | null>(null)
+  const [error, setError] = useState('')
+  const [busy, setBusy] = useState(false)
+  const running = useRef<AbortController | null>(null)
+
+  useEffect(() => {
+    const controller = new AbortController()
+    getCapabilities(controller.signal).then((value) => { setCapabilities(value); setConnectionError('') }).catch(() => {
+      if (!controller.signal.aborted) setConnectionError('Служба поиска недоступна. Запустите backend и откройте раздел снова.')
+    })
+    return () => { controller.abort(); running.current?.abort() }
+  }, [])
+
+  async function search(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    running.current?.abort()
+    const controller = new AbortController()
+    running.current = controller
+    const timeout = window.setTimeout(() => controller.abort(), 75000)
+    setBusy(true)
+    setError('')
+    setReport(null)
+    try {
+      const value = await researchTrends({ domain, query, windowDays, mode, limit: 6, enableAi }, controller.signal)
+      setReport(value)
+      setConnectionError('')
+    } catch (cause) {
+      if (!controller.signal.aborted) setError(cause instanceof Error ? cause.message : 'Не удалось выполнить поиск.')
+      else setError('Поиск прерван. Можно запустить его ещё раз.')
+    } finally { window.clearTimeout(timeout); setBusy(false) }
+  }
+
+  return (
+    <>
+      <header className="trend-header">
+        <div><p className="eyebrow">Общие инструменты</p><h1 className="screen-title">Поиск трендов</h1><p className="body-2">Находите темы, проверяйте сигналы и возвращайтесь к первоисточникам.</p></div>
+        <span className="quiet-badge">Исследование</span>
+      </header>
+
+      <form className="research-form" onSubmit={search} aria-busy={busy}>
+        <fieldset disabled={busy}>
+          <legend className="visually-hidden">Параметры исследования</legend>
+          <div className="mode-row">
+            <div className="mode-switch" role="group" aria-label="Данные исследования">
+              <button type="button" aria-pressed={mode === 'demo'} onClick={() => setMode('demo')}>Демоданные</button>
+              <button type="button" aria-pressed={mode === 'live'} onClick={() => setMode('live')}>Живые источники</button>
+            </div>
+            <span className="form-caption">{mode === 'demo' ? 'Одинаковый учебный набор для всей команды' : 'Публичные RSS-ленты · без поискового API'}</span>
+          </div>
+          <div className="research-fields">
+            <label className="query-field">Тема<input value={query} onChange={(event) => setQuery(event.target.value)} maxLength={160} placeholder="Например, силовые тренировки" /></label>
+            <label>Область<select value={domain} onChange={(event) => setDomain(event.target.value as TrendDomain)}>{domains.map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}</select></label>
+            <label>Период<select value={windowDays} onChange={(event) => setWindowDays(Number(event.target.value))}><option value={3}>3 дня</option><option value={7}>7 дней</option><option value={14}>14 дней</option><option value={30}>30 дней</option></select></label>
+          </div>
+          <div className="research-actions">
+            <label className="ai-toggle"><input type="checkbox" checked={enableAi} disabled={!capabilities?.ai.configured} onChange={(event) => setEnableAi(event.target.checked)} /><span>AI-разбор</span><span className="form-caption">{capabilities?.ai.configured ? 'Ollama настроена на сервере' : 'Модель пока не настроена'}</span></label>
+            <button className="primary-button" type="submit">{busy ? 'Исследуем…' : 'Найти сигналы'}<span aria-hidden="true">↗</span></button>
+          </div>
+        </fieldset>
+      </form>
+
+      {connectionError && !report ? <p className="notice error-notice" role="status">{connectionError}</p> : null}
+      {error ? <p className="notice error-notice" role="alert">{error}</p> : null}
+      <div aria-live="polite" aria-busy={busy}>
+        {busy ? <div className="search-empty"><span className="loading-dot" /><h2>Собираем материалы</h2><p>Проверяем публикации, даты и повторные упоминания.</p></div> : null}
+        {!busy && !report && !error ? <div className="search-empty"><svg viewBox="0 0 48 48" aria-hidden="true"><path d="M7 36 20 23l8 6 13-18M29 11h12v12" /></svg><h2>Сначала — тема, затем — доказательства</h2><p>Запустите исследование. Покажем публикации и изменение числа упоминаний за два равных периода.</p></div> : null}
+        {report ? (
+          <div className="research-results">
+            <div className="result-heading"><h2>Результат исследования</h2><span className="mono">{domains.find((item) => item.id === report.request.domain)?.label} · {report.request.windowDays} дн. · {dateLabel(report.referenceTime)}</span></div>
+            {report.request.query ? <p className="result-query">Тема: {report.request.query}</p> : null}
+            <div className="result-stats">
+              <div><span className="stat-value">{report.trends.length}</span><span>тем</span></div>
+              <div><span className="stat-value">{report.articles.length}</span><span>публикаций за два периода</span></div>
+              <div><span className="stat-value">{report.sources.filter((source) => source.status === 'ok').length}/{report.sources.length}</span><span>лент загружено</span></div>
+            </div>
+            {report.warnings.map((warning) => <p className="notice" key={warning}>{warning}</p>)}
+            {report.analysis.status === 'ready' ? <section className="analysis-panel"><p className="eyebrow">AI-разбор · {report.analysis.provider}</p><p>{report.analysis.summary}</p></section> : null}
+            {report.analysis.status === 'unavailable' ? <p className="notice error-notice">{report.analysis.error}</p> : null}
+            {!report.trends.length ? <div className="module-empty"><h3 className="empty-heading">Подходящих материалов нет</h3><p className="empty-copy">Измените запрос, область или период.</p></div> : null}
+            <div className="trend-grid">{report.trends.map((trend) => {
+              const evidence = report.articles.filter((article) => trend.evidenceIds.includes(article.id))
+              const insight = report.analysis.insights?.find((item) => item.trendId === trend.id)
+              return <article className="trend-card" key={trend.id}>
+                <div className="trend-card-top"><span className={`signal-badge ${trend.signal}`}>{signalLabels[trend.signal]}</span><span className="mono">{trend.growthPercent === null ? 'нет базы' : `${trend.growthPercent > 0 ? '+' : ''}${trend.growthPercent}%`}</span></div>
+                <h3>{trend.title}</h3>
+                <p className="trend-counts">{trend.currentMentions} упоминаний сейчас · {trend.previousMentions} ранее · {trend.sourceCount} издателей сейчас</p>
+                {insight ? <p className="trend-explanation">{insight.explanation}</p> : null}
+                <details><summary>Публикации и основания ({evidence.length})</summary><ul className="evidence-list">{evidence.map((article) => <li key={article.id}><a href={article.url} target="_blank" rel="noopener noreferrer">{article.title}<span aria-hidden="true"> ↗</span></a><span className="mono">{article.sourceName} · {dateLabel(article.publishedAt)}{insight?.evidenceIds.includes(article.id) ? ' · ссылка AI-разбора' : ''}</span></li>)}</ul></details>
+              </article>
+            })}</div>
+            <RecentArticles report={report} />
+            <details className="source-details"><summary>Состояние источников</summary><ul>{report.sources.map((source) => <li key={source.sourceId}><span>{source.name}</span><span className="mono">{source.status === 'ok' ? `${source.articleCount} публикаций${source.cached ? ' · кэш' : ''}` : source.error}</span></li>)}</ul></details>
+          </div>
+        ) : null}
+      </div>
+    </>
+  )
+}

@@ -1,0 +1,42 @@
+.sidebar {
+  width: 240px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px 12px;
+  border-right: 1px solid var(--separator);
+  background: var(--base);
+}
+.lockup { display: flex; align-items: center; gap: 8px; padding: 4px 8px 8px; }
+.brand-mark { width: 24px; height: 24px; flex: none; }
+.wordmark { font-size: 15px; font-weight: 600; letter-spacing: -0.02em; }
+.section-nav { display: flex; flex-direction: column; gap: 2px; }
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 36px;
+  padding: 8px 12px;
+  border-radius: var(--r-control);
+  color: var(--label-2);
+  font-size: 15px;
+  font-weight: 500;
+  text-align: left;
+  transition: background var(--t-fast) var(--ease), color var(--t-fast) var(--ease);
+}
+.nav-item:hover, .nav-item.active { color: var(--label); background: var(--fill); }
+.nav-item.active .nav-icon { stroke: var(--accent); }
+.nav-icon { width: 20px; height: 20px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+.sidebar-divider { height: 1px; margin: 4px 8px; background: var(--separator); }
+.nav-caption { margin: 0 0 8px; padding: 0 12px; color: var(--label-3); font-size: 12px; }
+.sidebar-footer { display: flex; justify-content: space-between; gap: 8px; margin-top: auto; padding: 12px; }
+
+@media (max-width: 760px) {
+  .sidebar { width: 100%; border-right: none; border-bottom: 1px solid var(--separator); padding: 12px 16px; gap: 8px; }
+  .lockup { padding: 0 4px 8px; }
+  .section-nav { flex-direction: row; flex-wrap: wrap; gap: 4px; }
+  .nav-item { width: auto; flex: 1 1 auto; font-size: 13px; min-height: 40px; }
+  .sidebar-divider, .nav-caption, .sidebar-footer { display: none; }
+}
