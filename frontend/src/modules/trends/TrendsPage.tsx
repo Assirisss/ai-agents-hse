@@ -4,6 +4,8 @@ import { getCapabilities, streamResearch, saveModuleContext } from './api'
 import './TrendsPage.css'
 import ResearchMemory from './ResearchMemory'
 import AgentResults from './AgentResults'
+import TrendChat from './TrendChat'
+import { createConversation } from './chat-api'
 import ResearchBrief from './ResearchBrief'
 import { collectModuleContexts } from './moduleContext'
 
@@ -34,6 +36,9 @@ function RecentArticles({ report }: { report: TrendReport }) {
 }
 
 export default function TrendsPage() {
+  const [view, setView] = useState<'chat' | 'research'>('chat')
+  const [chatId, setChatId] = useState<string | undefined>()
+  const [openingChat, setOpeningChat] = useState(false)
   const [domain, setDomain] = useState<TrendDomain>('all')
   const [mode, setMode] = useState<TrendMode>('live')
   const [query, setQuery] = useState('')
@@ -92,13 +97,24 @@ export default function TrendsPage() {
     } finally { window.clearTimeout(timeout); setBusy(false) }
   }
 
+  async function discuss() {
+    if (!report) return
+    setOpeningChat(true); setError('')
+    try { const conversation = await createConversation(report.id); setChatId(conversation.id); setView('chat') }
+    catch (cause) { setError(cause instanceof Error ? cause.message : 'Не удалось начать обсуждение') }
+    finally { setOpeningChat(false) }
+  }
+
   return (
     <>
       <header className="trend-header">
-        <div><p className="eyebrow">Общие инструменты</p><h1 className="screen-title">Поиск трендов</h1><p className="body-2">Задайте тему. Исследователь соберёт материалы, проверит основания и объяснит, что полезно вам.</p></div>
+        <div><p className="eyebrow">Общие инструменты</p><h1 className="screen-title">Поиск трендов</h1><p className="body-2">Обсуждайте темы, уточняйте запросы и проверяйте источники вместе с исследователем.</p></div>
         <span className="quiet-badge">Персональный исследователь</span>
       </header>
 
+      <div className="trend-mode-tabs" role="tablist" aria-label="Режим поиска трендов"><button type="button" role="tab" id="trend-chat-tab" aria-controls="trend-chat-panel" aria-selected={view === 'chat'} onClick={() => setView('chat')}>Чат</button><button type="button" role="tab" id="trend-research-tab" aria-controls="trend-research-panel" aria-selected={view === 'research'} onClick={() => setView('research')}>Исследование</button></div>
+      <div id="trend-chat-panel" role="tabpanel" aria-labelledby="trend-chat-tab" hidden={view !== 'chat'}><TrendChat onResearchComplete={() => setRevision((value) => value + 1)} capabilities={capabilities} openConversationId={chatId} onReport={(value) => { setReport(value); setView('research') }} /></div>
+      <div id="trend-research-panel" role="tabpanel" aria-labelledby="trend-research-tab" hidden={view !== 'research'}>
       <ResearchMemory revision={revision} onLoad={setReport} />
 
       <form className="research-form" onSubmit={search} aria-busy={busy}>
@@ -117,7 +133,7 @@ export default function TrendsPage() {
             <label>Период<select value={windowDays} onChange={(event) => setWindowDays(Number(event.target.value))}><option value={3}>3 дня</option><option value={7}>7 дней</option><option value={14}>14 дней</option><option value={30}>30 дней</option></select></label>
           </div>
           <div className="research-actions">
-            <div className="research-options"><label className="ai-toggle"><input type="checkbox" checked={useModuleContext} onChange={(event) => setUseModuleContext(event.target.checked)} /><span>Учитывать данные разделов</span></label><label className="ai-toggle"><input type="checkbox" checked={useWeb} disabled={mode !== 'live'} onChange={(event) => setUseWeb(event.target.checked)} /><span>Искать в интернете</span></label><label className="ai-toggle"><input type="checkbox" checked={remember} onChange={(event) => setRemember(event.target.checked)} /><span>Сохранить в память</span></label><label className="ai-toggle"><input type="checkbox" checked={enableAi && Boolean(capabilities?.agent?.configured)} disabled={!capabilities?.agent?.configured} onChange={(event) => setEnableAi(event.target.checked)} /><span>Агент с моделью</span><span className="form-caption">{capabilities?.ai.configured ? `${capabilities.ai.provider === 'openrouter' ? 'OpenRouter' : 'Ollama'} настроен на сервере` : 'Без LLM: сценарий инструментов'}</span></label></div>
+            <div className="research-options"><label className="ai-toggle"><input type="checkbox" checked={useModuleContext} onChange={(event) => setUseModuleContext(event.target.checked)} /><span>Учитывать данные разделов</span></label><label className="ai-toggle"><input type="checkbox" checked={useWeb} disabled={mode !== 'live'} onChange={(event) => setUseWeb(event.target.checked)} /><span>Искать в интернете</span></label><label className="ai-toggle"><input type="checkbox" checked={remember} onChange={(event) => setRemember(event.target.checked)} /><span>Сохранить в память</span></label><label className="ai-toggle"><input type="checkbox" checked={enableAi && Boolean(capabilities?.agent?.configured)} disabled={!capabilities?.agent?.configured} onChange={(event) => setEnableAi(event.target.checked)} /><span>Агент с моделью</span><span className="form-caption">{capabilities?.ai.configured ? `${capabilities.ai.provider === 'runpod' ? 'Runpod' : capabilities.ai.provider === 'openrouter' ? 'OpenRouter' : 'Ollama'} настроен на сервере` : 'Без LLM: сценарий инструментов'}</span></label></div>
             <button className="primary-button" type="submit">{busy ? 'Исследуем…' : 'Запустить исследование'}<span aria-hidden="true">↗</span></button>
           </div>
         </fieldset>
@@ -131,6 +147,8 @@ export default function TrendsPage() {
         {report ? (
           <div className="research-results">
             <div className="result-heading"><h2>Результат исследования</h2><span className="mono">{domains.find((item) => item.id === report.request.domain)?.label} · {report.request.windowDays} дн. · {dateLabel(report.referenceTime)}</span></div>
+            <button type="button" className="secondary-button" disabled={openingChat} onClick={discuss}>{openingChat ? 'Открываем чат…' : 'Обсудить этот отчёт в чате ↗'}</button>
+            {!report.request.remember ? <p className="form-caption">Переход в чат доступен для сохранённых отчётов. Новые исследования внутри чата сохраняются автоматически.</p> : null}
             {report.request.query ? <p className="result-query">Тема: {report.request.query}</p> : null}
             <div className="result-stats">
               <div><span className="stat-value">{report.trends.length}</span><span>тем</span></div>
@@ -157,6 +175,7 @@ export default function TrendsPage() {
             <details className="source-details"><summary>Состояние источников</summary><ul>{report.sources.map((source) => <li key={source.sourceId}><span>{source.name}</span><span className="mono">{source.status === 'ok' ? `${source.articleCount} публикаций${source.cached ? ' · кэш' : ''}` : source.error}</span></li>)}</ul></details>
           </div>
         ) : null}
+      </div>
       </div>
     </>
   )

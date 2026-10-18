@@ -94,3 +94,11 @@ const report = await tool.execute({
 `npm run eval:trends` проверяет семь сценариев без сети. `npm run eval:trends -- --live` отдельно сравнивает фиксированный сценарий и OpenRouter на одном публичном запросе, выводя метрики; ключ и модель читаются из локального `.env`.
 
 [Источники рекомендаций, архитектура и ограничения](../docs/trends-agent-practices.md).
+
+## Чат трендов
+
+В разделе появился отдельный диалог с серверной историей. Сначала выполняются детерминированные команды и инструменты; для свободного вопроса используется тот же настроенный ResearchPlanner. Вложенный модельный агент при новом исследовании не вызывается.
+
+`GET /api/trends/chat/tools` возвращает каталог. `GET/POST /api/trends/chat/:profileId/conversations` — список/создание; `GET .../:id` — состояние; `POST .../:id/messages/stream` — сообщения с NDJSON-прогрессом. Запрос включает `turnId`, `expectedRevision`, `text`, `mode`, `enableAi`, `useWeb`, `useModuleContext`.
+
+[Контракты девяти инструментов, примеры команд, запись и ограничения](../docs/trend-chat.md).

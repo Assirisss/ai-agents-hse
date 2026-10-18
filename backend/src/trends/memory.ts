@@ -1,3 +1,4 @@
+import { TrendChatStore } from './chat-store.js'
 import { DatabaseSync } from 'node:sqlite'
 import { mkdirSync, chmodSync } from 'node:fs'
 import { dirname } from 'node:path'
@@ -11,6 +12,7 @@ export class TrendMemory {
   private db: DatabaseSync
   private closed = false
   readonly persistent: boolean
+  readonly chats: TrendChatStore
   constructor(path = ':memory:', private clock = () => new Date()) {
     this.persistent = path !== ':memory:'
     if (this.persistent) mkdirSync(dirname(path), { recursive: true, mode: 0o700 })
@@ -24,6 +26,7 @@ export class TrendMemory {
       CREATE TABLE IF NOT EXISTS observed_articles (profile_id TEXT NOT NULL, url TEXT NOT NULL, mode TEXT NOT NULL, value TEXT NOT NULL, last_seen TEXT NOT NULL, PRIMARY KEY(profile_id,url,mode));
       CREATE TABLE IF NOT EXISTS seen_resources (profile_id TEXT NOT NULL, url TEXT NOT NULL, mode TEXT NOT NULL, seen_at TEXT NOT NULL, PRIMARY KEY(profile_id,url,mode));
       CREATE TABLE IF NOT EXISTS relevance_feedback (profile_id TEXT NOT NULL, url TEXT NOT NULL, verdict TEXT NOT NULL, updated_at TEXT NOT NULL, PRIMARY KEY(profile_id,url));`)
+    this.chats = new TrendChatStore(this.db, this.clock)
   }
   profile(id = 'default'): TrendProfile {
     profileIdSchema.parse(id)

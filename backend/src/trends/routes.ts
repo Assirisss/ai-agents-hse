@@ -1,3 +1,4 @@
+import { registerTrendChatRoutes } from './chat-routes.js'
 import { PassThrough } from 'node:stream'
 import type { FastifyInstance } from 'fastify'
 import { z } from 'zod'
@@ -7,6 +8,7 @@ import type { ResearchStreamEvent } from '../../../shared/trends.js'
 import type { TrendResearchService } from './service.js'
 
 export function registerTrendRoutes(app: FastifyInstance, service: TrendResearchService) {
+  registerTrendChatRoutes(app, service)
   app.get('/api/trends/capabilities', async () => service.capabilities())
   app.post('/api/trends/research', async (request) => service.search(request.body))
   app.post('/api/trends/research/stream', (request, reply) => {

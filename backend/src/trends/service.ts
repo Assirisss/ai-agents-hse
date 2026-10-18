@@ -29,6 +29,7 @@ export class TrendResearchService {
     return { sources, ai: { configured: Boolean(this.analyzer || this.planner), provider: this.planner?.provider || this.analyzer?.provider || null },
       web: { provider: this.web.provider, configured: true }, agent: { configured: Boolean(this.planner), tools: researchTools }, memory: { persistent: this.memory.persistent } }
   }
+  conversationPlanner(): ResearchPlanner | undefined { return this.planner }
   close() { this.memory.close() }
 
   async search(input: unknown, runtime: ResearchRuntime = {}): Promise<TrendReport> {
