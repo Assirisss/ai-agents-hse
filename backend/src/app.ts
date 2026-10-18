@@ -3,8 +3,11 @@ import { ZodError } from 'zod'
 import { ResearchError } from './trends/schema.js'
 import { TrendResearchService } from './trends/service.js'
 import { registerTrendRoutes } from './trends/routes.js'
+import { PlanningError } from './planning/schema.js'
+import { registerPlanningRoutes } from './planning/routes.js'
+import type { PlanningService } from './planning/service.js'
 
-export function createApp(service = new TrendResearchService()) {
+export function createApp(service = new TrendResearchService(), planning?: PlanningService) {
   const app = Fastify({ logger: false, bodyLimit: 8192, requestTimeout: 15000 })
   app.addHook('onRequest', async (request, reply) => {
     // This development service is local-only, with same-origin access through Vite.
@@ -20,11 +23,20 @@ export function createApp(service = new TrendResearchService()) {
   app.addHook('onSend', async (_request, reply) => { reply.header('Cache-Control', 'no-store') })
   app.get('/api/health', async () => ({ status: 'ok' }))
   registerTrendRoutes(app, service)
-  app.setErrorHandler((error, _request, reply) => {
-    if (error instanceof ZodError) return reply.code(400).send({ error: 'Некорректные параметры исследования', issues: error.issues.map((issue) => ({ path: issue.path.join('.'), message: issue.message })) })
-    if (error instanceof ResearchError) return reply.code(error.statusCode).send({ error: error.message })
+  if (planning) {
+    registerPlanningRoutes(app, planning)
+    app.addHook('onClose', async () => planning.close())
+  }
+  app.setErrorHandler((error, request, reply) => {
+    if (error instanceof ZodError) {
+      const issues = error.issues.map((issue) => ({ path: issue.path.join('.'), message: issue.message }))
+      // Planning forms show the first message as is, so it has to be readable.
+      if (request.url.startsWith('/api/planning')) return reply.code(400).send({ error: issues[0]?.message && !/^(Invalid|Expected|Unrecognized)/.test(issues[0].message) ? issues[0].message : `Некорректное поле ${issues[0]?.path || ''}`.trim(), issues })
+      return reply.code(400).send({ error: 'Некорректные параметры исследования', issues })
+    }
+    if (error instanceof ResearchError || error instanceof PlanningError) return reply.code(error.statusCode).send({ error: error.message })
     const status = typeof error === 'object' && error && 'statusCode' in error ? Number(error.statusCode) : 500
-    return reply.code(status >= 400 && status < 500 ? status : 500).send({ error: status === 413 ? 'Слишком большой запрос' : status === 400 ? 'Некорректный JSON' : status === 415 ? 'Ожидается application/json' : 'Ошибка службы исследований' })
+    return reply.code(status >= 400 && status < 500 ? status : 500).send({ error: status === 413 ? 'Слишком большой запрос' : status === 400 ? 'Некорректный JSON' : status === 415 ? 'Ожидается application/json' : (request.url.startsWith('/api/planning') ? 'Ошибка раздела «Дела и календарь»' : 'Ошибка службы исследований') })
   })
   return app
 }
