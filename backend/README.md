@@ -52,6 +52,26 @@ curl http://127.0.0.1:8787/api/trends/research \
 
 Для `planning` пока нет живых RSS-источников — без `useWeb=true` API вернёт 422. В деморежиме область доступна. Нет скрытого переключения с live на demo при ошибке сети.
 
+## Дела и календарь
+
+Раздел работает в той же службе. Данные — `data/planning.sqlite`, ключ шифрования секретов — `data/planning.key`. Telegram-бот проекта запускается вместе со службой, если задан `TELEGRAM_BOT_TOKEN`; пользователи только привязывают свои чаты. Google и Яндекс подключаются на сайте («Дела и календарь» → «Подключения»), инструкции там же. [Устройство и ограничения](../docs/planning.md).
+
+| Метод | Путь | Результат |
+| --- | --- | --- |
+| GET | `/api/planning/brief?date=` | План на день: события, задачи, пересечения, свободные окна, текст |
+| GET | `/api/planning/agenda?from=&days=` | События и задачи по дням |
+| GET / POST / PUT / DELETE | `/api/planning/events[/:id]` | События; `POST /events/:id/skip` — пропустить одно повторение |
+| GET / POST / PUT / DELETE | `/api/planning/tasks[/:id]` | Задачи; `POST /tasks/:id/complete` создаёт следующую для повторяющихся |
+| POST | `/api/planning/assistant` | `{message, history?, mode?}` → ответ ассистента: маршрут, текст, шаги агента, черновик |
+| POST | `/api/planning/drafts` | `{text, useAi, force?}` → черновик; `POST /drafts/:id/confirm` сохраняет |
+| GET / PUT | `/api/planning/settings` | Часовой пояс, время сводки, напоминания, рабочие часы |
+| GET / DELETE | `/api/planning/accounts[/:id]` | Подключённые календари; `POST /accounts/:id/sync` |
+| PUT | `/api/planning/google/config` | Client ID и Secret; `POST /google/start` — ссылка входа |
+| POST | `/api/planning/yandex/connect` | `{login, password, calendarUrl?}` |
+| GET / PUT / DELETE | `/api/planning/telegram` | Бот; `POST /telegram/link` — ссылка привязки чата |
+
+Локальная модель для сложных фраз и агента: `PLANNING_LLM_MODEL=qwen3:8b` (Ollama). Без неё работают правила и диспетчер.
+
 ## Подключение к другим агентам
 
 Типы запросов и ответов: `shared/trends.ts` в корне репозитория. Другой модуль может вызвать HTTP API или зарегистрировать инструмент напрямую:
