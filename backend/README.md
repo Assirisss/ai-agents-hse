@@ -151,3 +151,7 @@ Backend отправляет PNG в Runpod `/run`, возвращает ID за�
 `GET /api/trends/chat/tools` возвращает каталог. `GET/POST /api/trends/chat/:profileId/conversations` — список/создание; `GET .../:id` — состояние; `POST .../:id/messages/stream` — сообщения с NDJSON-прогрессом. Запрос включает `turnId`, `expectedRevision`, `text`, `mode`, `enableAi`, `useWeb`, `useModuleContext`.
 
 [Контракты девяти инструментов, примеры команд, запись и ограничения](../docs/trend-chat.md).
+
+## Финансовый модуль
+
+Подключён к тому же Fastify через `/api/finance/*`, хранит данные в Postgres при заданном `DATABASE_URL`; исследователь трендов сохраняет свою SQLite-память. Миграции: `npm run finance:migrate`; Telegram и ежедневные котировки: отдельный `npm run finance:worker`. Расчёты работают без LLM, текст и фото создают только черновики. [Полные инструкции, API и проверки](../docs/finance.md).

@@ -3,11 +3,12 @@ import { readLimitedText } from '../trends/http.js'
 /** Minimal Telegram Bot API client with long polling: works locally without a public URL or webhook. */
 
 export type TelegramChatInfo = { id: number; type: string; title?: string; first_name?: string; last_name?: string; username?: string }
-export type TelegramMessage = { message_id: number; chat: TelegramChatInfo; text?: string }
+export type TelegramUser = { id: number; is_bot?: boolean }
+export type TelegramMessage = { message_id: number; chat: TelegramChatInfo; text?: string; from?: TelegramUser; photo?: { file_id: string; file_size?: number }[] }
 export type TelegramUpdate = {
   update_id: number
   message?: TelegramMessage
-  callback_query?: { id: string; data?: string; message?: TelegramMessage }
+  callback_query?: { id: string; data?: string; message?: TelegramMessage; from?: TelegramUser }
 }
 export type InlineButton = { text: string; callback_data: string } | { text: string; url: string }
 export type SendOptions = { html?: boolean; buttons?: InlineButton[][] }
@@ -101,6 +102,9 @@ type Handler<T> = (context: T) => Promise<void>
 
 /** Shared router: each module registers its commands, button prefixes and, at most one, free-text handler. */
 export class TelegramRouter {
+  private interceptors: ((update: TelegramUpdate) => Promise<boolean>)[] = []
+  /** Module routes may claim a raw update before the default command/text handler. */
+  intercept(handler: (update: TelegramUpdate) => Promise<boolean>) { this.interceptors.push(handler); return this }
   private commands = new Map<string, { description: string; handler: Handler<TelegramContext> }>()
   private callbacks: { prefix: string; handler: Handler<CallbackContext> }[] = []
   private fallback: Handler<TelegramContext> | null = null
@@ -111,6 +115,7 @@ export class TelegramRouter {
   commandList() { return [...this.commands].filter(([name]) => name !== 'start').map(([command, item]) => ({ command, description: item.description })) }
 
   async dispatch(bot: TelegramBot, update: TelegramUpdate) {
+    for (const handler of this.interceptors) if (await handler(update)) return
     if (update.callback_query) {
       const query = update.callback_query
       const message = query.message

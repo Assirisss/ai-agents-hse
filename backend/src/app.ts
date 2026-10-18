@@ -1,4 +1,9 @@
 import Fastify from 'fastify'
+import { registerFinanceRoutes } from './finance/routes.js'
+import { FinanceError } from './finance/schema.js'
+import type { FinanceChatService } from './finance/chat.js'
+import type { PaymentService } from './finance/payments.js'
+import type { FinanceService } from './finance/service.js'
 import { ZodError } from 'zod'
 import { ResearchError } from './trends/schema.js'
 import { TrendResearchService } from './trends/service.js'
@@ -17,10 +22,13 @@ type AppOptions = {
   wardrobePlanner?: ResearchPlanner
   vision?: WardrobeVision
   planning?: PlanningService
+  finance?: FinanceService
+  financeChat?: FinanceChatService
+  payments?: PaymentService
 }
 
 export function createApp(service = new TrendResearchService(), options: AppOptions = {}) {
-  const { remover = new RunpodBiRefNet(), wardrobePlanner, vision = new OpenRouterWardrobeVision(), planning } = options
+  const { remover = new RunpodBiRefNet(), wardrobePlanner, vision = new OpenRouterWardrobeVision(), planning, finance, financeChat, payments } = options
   const app = Fastify({ logger: false, bodyLimit: 8192, requestTimeout: 15000 })
   app.addHook('onRequest', async (request, reply) => {
     // This development service is local-only, with same-origin access through Vite.
@@ -41,6 +49,7 @@ export function createApp(service = new TrendResearchService(), options: AppOpti
     service.memory.saveModuleContext('default', { module: 'wardrobe', source: 'Сводка из чата гардероба', facts })
   })
   registerWardrobeAgentRoutes(app, stylist, vision)
+  app.register(async (scope) => registerFinanceRoutes(scope, finance, financeChat, payments))
   if (planning) {
     registerPlanningRoutes(app, planning)
     app.addHook('onClose', async () => planning.close())
@@ -50,9 +59,9 @@ export function createApp(service = new TrendResearchService(), options: AppOpti
       const issues = error.issues.map((issue) => ({ path: issue.path.join('.'), message: issue.message }))
       // Planning forms show the first message as is, so it has to be readable.
       if (request.url.startsWith('/api/planning')) return reply.code(400).send({ error: issues[0]?.message && !/^(Invalid|Expected|Unrecognized)/.test(issues[0].message) ? issues[0].message : `Некорректное поле ${issues[0]?.path || ''}`.trim(), issues })
-      return reply.code(400).send({ error: 'Некорректные параметры исследования', issues })
+      return reply.code(400).send({ error: 'Некорректные параметры запроса', issues })
     }
-    if (error instanceof ResearchError || error instanceof PlanningError) return reply.code(error.statusCode).send({ error: error.message })
+    if (error instanceof ResearchError || error instanceof PlanningError || error instanceof FinanceError) return reply.code(error.statusCode).send({ error: error.message })
     if (error instanceof PhotoProcessingError || error instanceof WardrobeAgentError) return reply.code(error.statusCode).send({ error: error.message })
     const status = typeof error === 'object' && error && 'statusCode' in error ? Number(error.statusCode) : 500
     return reply.code(status >= 400 && status < 500 ? status : 500).send({ error: status === 413 ? 'Слишком большой запрос' : status === 400 ? 'Некорректный JSON' : status === 415 ? 'Ожидается application/json' : (request.url.startsWith('/api/planning') ? 'Ошибка раздела «Дела и календарь»' : 'Ошибка службы исследований') })

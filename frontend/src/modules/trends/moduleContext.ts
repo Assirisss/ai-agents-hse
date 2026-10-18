@@ -55,7 +55,14 @@ async function wardrobeContext(): ReturnType<ModuleContextAdapter> {
   } finally { db.close() }
 }
 
-const adapters: ModuleContextAdapter[] = [wardrobeContext]
+async function financeContext(): ReturnType<ModuleContextAdapter> {
+  try {
+    const response = await fetch('/api/finance/context?profileId=default', { signal: AbortSignal.timeout(5000) })
+    if (!response.ok) return null
+    return await response.json() as Omit<UserModuleContext, 'updatedAt'>
+  } catch { return null }
+}
+const adapters: ModuleContextAdapter[] = [wardrobeContext, financeContext]
 /** Future planning, finance and health modules register explicit summaries, never raw private records. */
 export function registerModuleContextAdapter(adapter: ModuleContextAdapter) {
   adapters.push(adapter)

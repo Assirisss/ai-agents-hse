@@ -1,6 +1,8 @@
 import { existsSync } from 'node:fs'
 import { loadEnvFile } from 'node:process'
 import { createApp } from './app.js'
+import { setupFinance } from './finance/setup.js'
+import { registerSharedFinance } from './finance/shared-telegram.js'
 import { resolve } from 'node:path'
 import { TrendMemory } from './trends/memory.js'
 import { PublicSearch } from './trends/web.js'
@@ -45,10 +47,15 @@ const wardrobeModel = process.env.WARDROBE_LLM_MODEL?.trim()
 const wardrobePlanner = runpodPlanner || (routerKey
   ? new OpenRouterPlanner(routerKey, process.env.WARDROBE_OPENROUTER_MODEL?.trim() || process.env.OPENROUTER_MODEL?.trim() || 'openrouter/free')
   : wardrobeModel ? new OllamaPlanner(wardrobeModel, process.env.WARDROBE_LLM_URL || process.env.TREND_LLM_URL || 'http://127.0.0.1:11434') : planner)
-const app = createApp(service, { planning, wardrobePlanner })
+const financial = await setupFinance(process.env, planning)
+if (financial?.bot) registerSharedFinance(telegram, financial.bot, financial.telegramPort, (chatId) => Boolean(planningStore.chatProfile(chatId)))
+const app = createApp(service, { planning, wardrobePlanner, finance: financial?.finance, financeChat: financial?.chat, payments: financial?.payments })
+app.addHook('onClose', async () => { financial?.payments.stop(); await financial?.store.close() })
 await app.listen({ port, host: '127.0.0.1' })
 await telegram.start()
 scheduler.start()
+financial?.payments.start()
+console.log(`Finance: ${financial ? 'Postgres configured; shared Telegram router' : 'set DATABASE_URL to enable'}`)
 console.log(`Trend research API: http://127.0.0.1:${port}`)
 console.log(`AI analysis: ${planner?.provider || 'not configured; deterministic research is available'}`)
 console.log(`Wardrobe stylist: ${wardrobePlanner?.provider || 'not configured'}`)
