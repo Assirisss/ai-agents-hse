@@ -18,3 +18,4 @@ services/birefnet/artifact.tar.gz
 
 # Local personal profiles, research memory and SQLite journals
 backend/data/
+AGENTS.md

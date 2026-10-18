@@ -17,6 +17,8 @@ import { modelFromEnvironment } from './planning/model.js'
 import { PlanningScheduler } from './planning/scheduler.js'
 import { registerPlanningCommands } from './planning/telegram.js'
 import { TelegramService } from './telegram/service.js'
+import { HealthStore } from './health/store.js'
+import { HealthService } from './health/service.js'
 
 if (existsSync('.env')) loadEnvFile('.env')
 const port = Number(process.env.PORT || 8787)
@@ -45,7 +47,8 @@ const wardrobeModel = process.env.WARDROBE_LLM_MODEL?.trim()
 const wardrobePlanner = runpodPlanner || (routerKey
   ? new OpenRouterPlanner(routerKey, process.env.WARDROBE_OPENROUTER_MODEL?.trim() || process.env.OPENROUTER_MODEL?.trim() || 'openrouter/free')
   : wardrobeModel ? new OllamaPlanner(wardrobeModel, process.env.WARDROBE_LLM_URL || process.env.TREND_LLM_URL || 'http://127.0.0.1:11434') : planner)
-const app = createApp(service, { planning, wardrobePlanner })
+const health = new HealthService(new HealthStore(resolve(process.env.HEALTH_DB_PATH || 'data/health.sqlite')))
+const app = createApp(service, { planning, wardrobePlanner, health })
 await app.listen({ port, host: '127.0.0.1' })
 await telegram.start()
 scheduler.start()

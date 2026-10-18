@@ -11,12 +11,16 @@ import { OpenRouterWardrobeVision, type WardrobeVision } from './wardrobe/vision
 import { PlanningError } from './planning/schema.js'
 import { registerPlanningRoutes } from './planning/routes.js'
 import type { PlanningService } from './planning/service.js'
+import type { HealthService } from './health/service.js'
+import { registerHealthRoutes } from './health/routes.js'
+import { HealthError } from './health/schema.js'
 
 type AppOptions = {
   remover?: BackgroundRemover
   wardrobePlanner?: ResearchPlanner
   vision?: WardrobeVision
   planning?: PlanningService
+  health?: HealthService
 }
 
 export function createApp(service = new TrendResearchService(), options: AppOptions = {}) {
@@ -35,6 +39,7 @@ export function createApp(service = new TrendResearchService(), options: AppOpti
   })
   app.addHook('onSend', async (_request, reply) => { reply.header('Cache-Control', 'no-store') })
   app.get('/api/health', async () => ({ status: 'ok' }))
+  if (options.health) registerHealthRoutes(app, options.health)
   registerTrendRoutes(app, service)
   app.register(async (scope) => registerPhotoRoutes(scope, remover))
   const stylist = new WardrobeAgentService(wardrobePlanner, (input, signal) => service.search(input, { signal }), facts => {
@@ -48,13 +53,15 @@ export function createApp(service = new TrendResearchService(), options: AppOpti
   app.setErrorHandler((error, request, reply) => {
     if (error instanceof ZodError) {
       const issues = error.issues.map((issue) => ({ path: issue.path.join('.'), message: issue.message }))
+      if (request.url.startsWith('/api/sport')) return reply.code(400).send({ error: 'Проверьте заполнение полей: названия, даты и допустимые числовые значения.', issues })
       // Planning forms show the first message as is, so it has to be readable.
       if (request.url.startsWith('/api/planning')) return reply.code(400).send({ error: issues[0]?.message && !/^(Invalid|Expected|Unrecognized)/.test(issues[0].message) ? issues[0].message : `Некорректное поле ${issues[0]?.path || ''}`.trim(), issues })
       return reply.code(400).send({ error: 'Некорректные параметры исследования', issues })
     }
-    if (error instanceof ResearchError || error instanceof PlanningError) return reply.code(error.statusCode).send({ error: error.message })
+    if (error instanceof ResearchError || error instanceof PlanningError || error instanceof HealthError) return reply.code(error.statusCode).send({ error: error.message })
     if (error instanceof PhotoProcessingError || error instanceof WardrobeAgentError) return reply.code(error.statusCode).send({ error: error.message })
     const status = typeof error === 'object' && error && 'statusCode' in error ? Number(error.statusCode) : 500
+    if (request.url.startsWith('/api/sport')) return reply.code(status >= 400 && status < 500 ? status : 500).send({ error: status === 413 ? 'Запись или фотография слишком большая' : status === 400 ? 'Некорректный запрос' : 'Не удалось выполнить запрос раздела «Спорт и питание»' })
     return reply.code(status >= 400 && status < 500 ? status : 500).send({ error: status === 413 ? 'Слишком большой запрос' : status === 400 ? 'Некорректный JSON' : status === 415 ? 'Ожидается application/json' : (request.url.startsWith('/api/planning') ? 'Ошибка раздела «Дела и календарь»' : 'Ошибка службы исследований') })
   })
   return app
