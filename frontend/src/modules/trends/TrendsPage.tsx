@@ -1,7 +1,10 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 import type { TrendCapabilities, TrendDomain, TrendMode, TrendReport } from '../../../../shared/trends'
-import { getCapabilities, researchTrends } from './api'
+import { getCapabilities, researchTrends, saveModuleContext } from './api'
 import './TrendsPage.css'
+import ResearchMemory from './ResearchMemory'
+import AgentResults from './AgentResults'
+import { collectModuleContexts } from './moduleContext'
 
 const domains: { id: TrendDomain; label: string }[] = [
   { id: 'all', label: 'Все области' }, { id: 'finance', label: 'Финансы' },
@@ -35,6 +38,10 @@ export default function TrendsPage() {
   const [query, setQuery] = useState('')
   const [windowDays, setWindowDays] = useState(7)
   const [enableAi, setEnableAi] = useState(false)
+  const [useWeb, setUseWeb] = useState(true)
+  const [useModuleContext, setUseModuleContext] = useState(true)
+  const [remember, setRemember] = useState(true)
+  const [revision, setRevision] = useState(0)
   const [capabilities, setCapabilities] = useState<TrendCapabilities | null>(null)
   const [connectionError, setConnectionError] = useState('')
   const [report, setReport] = useState<TrendReport | null>(null)
@@ -55,13 +62,18 @@ export default function TrendsPage() {
     running.current?.abort()
     const controller = new AbortController()
     running.current = controller
-    const timeout = window.setTimeout(() => controller.abort(), 75000)
+    const timeout = window.setTimeout(() => controller.abort(), 125000)
     setBusy(true)
     setError('')
     setReport(null)
     try {
-      const value = await researchTrends({ domain, query, windowDays, mode, limit: 6, enableAi }, controller.signal)
+      if (useModuleContext) {
+        const contexts = await collectModuleContexts()
+        await Promise.all(contexts.map((context) => saveModuleContext(context, controller.signal)))
+      }
+      const value = await researchTrends({ domain, query, windowDays, mode, limit: 6, enableAi, useWeb: mode === 'live' && useWeb, strategy: 'agent', profileId: 'default', useModuleContext, remember }, controller.signal)
       setReport(value)
+      setRevision((value) => value + 1)
       setConnectionError('')
     } catch (cause) {
       if (!controller.signal.aborted) setError(cause instanceof Error ? cause.message : 'Не удалось выполнить поиск.')
@@ -76,6 +88,8 @@ export default function TrendsPage() {
         <span className="quiet-badge">Исследование</span>
       </header>
 
+      <ResearchMemory revision={revision} onLoad={setReport} />
+
       <form className="research-form" onSubmit={search} aria-busy={busy}>
         <fieldset disabled={busy}>
           <legend className="visually-hidden">Параметры исследования</legend>
@@ -84,7 +98,7 @@ export default function TrendsPage() {
               <button type="button" aria-pressed={mode === 'demo'} onClick={() => setMode('demo')}>Демоданные</button>
               <button type="button" aria-pressed={mode === 'live'} onClick={() => setMode('live')}>Живые источники</button>
             </div>
-            <span className="form-caption">{mode === 'demo' ? 'Одинаковый учебный набор для всей команды' : 'Публичные RSS-ленты · без поискового API'}</span>
+            <span className="form-caption">{mode === 'demo' ? 'Одинаковый учебный набор для всей команды' : 'RSS, веб-поиск и память исследований'}</span>
           </div>
           <div className="research-fields">
             <label className="query-field">Тема<input value={query} onChange={(event) => setQuery(event.target.value)} maxLength={160} placeholder="Например, силовые тренировки" /></label>
@@ -92,7 +106,7 @@ export default function TrendsPage() {
             <label>Период<select value={windowDays} onChange={(event) => setWindowDays(Number(event.target.value))}><option value={3}>3 дня</option><option value={7}>7 дней</option><option value={14}>14 дней</option><option value={30}>30 дней</option></select></label>
           </div>
           <div className="research-actions">
-            <label className="ai-toggle"><input type="checkbox" checked={enableAi} disabled={!capabilities?.ai.configured} onChange={(event) => setEnableAi(event.target.checked)} /><span>AI-разбор</span><span className="form-caption">{capabilities?.ai.configured ? 'Ollama настроена на сервере' : 'Модель пока не настроена'}</span></label>
+            <div className="research-options"><label className="ai-toggle"><input type="checkbox" checked={useModuleContext} onChange={(event) => setUseModuleContext(event.target.checked)} /><span>Учитывать данные разделов</span></label><label className="ai-toggle"><input type="checkbox" checked={useWeb} disabled={mode !== 'live'} onChange={(event) => setUseWeb(event.target.checked)} /><span>Искать в интернете</span></label><label className="ai-toggle"><input type="checkbox" checked={remember} onChange={(event) => setRemember(event.target.checked)} /><span>Сохранить в память</span></label><label className="ai-toggle"><input type="checkbox" checked={enableAi} disabled={!capabilities?.ai.configured} onChange={(event) => setEnableAi(event.target.checked)} /><span>Агент с моделью</span><span className="form-caption">{capabilities?.ai.configured ? `${capabilities.ai.provider === 'openrouter' ? 'OpenRouter' : 'Ollama'} настроен на сервере` : 'Без LLM: сценарий инструментов'}</span></label></div>
             <button className="primary-button" type="submit">{busy ? 'Исследуем…' : 'Найти сигналы'}<span aria-hidden="true">↗</span></button>
           </div>
         </fieldset>
@@ -101,7 +115,7 @@ export default function TrendsPage() {
       {connectionError && !report ? <p className="notice error-notice" role="status">{connectionError}</p> : null}
       {error ? <p className="notice error-notice" role="alert">{error}</p> : null}
       <div aria-live="polite" aria-busy={busy}>
-        {busy ? <div className="search-empty"><span className="loading-dot" /><h2>Собираем материалы</h2><p>Проверяем публикации, даты и повторные упоминания.</p></div> : null}
+        {busy ? <div className="search-empty"><span className="loading-dot" /><h2>Собираем материалы</h2><p>Учитываем контекст, ищем материалы и проверяем основания.</p></div> : null}
         {!busy && !report && !error ? <div className="search-empty"><svg viewBox="0 0 48 48" aria-hidden="true"><path d="M7 36 20 23l8 6 13-18M29 11h12v12" /></svg><h2>Сначала — тема, затем — доказательства</h2><p>Запустите исследование. Покажем публикации и изменение числа упоминаний за два равных периода.</p></div> : null}
         {report ? (
           <div className="research-results">
@@ -109,7 +123,7 @@ export default function TrendsPage() {
             {report.request.query ? <p className="result-query">Тема: {report.request.query}</p> : null}
             <div className="result-stats">
               <div><span className="stat-value">{report.trends.length}</span><span>тем</span></div>
-              <div><span className="stat-value">{report.articles.length}</span><span>публикаций за два периода</span></div>
+              <div><span className="stat-value">{report.articles.length}</span><span>датированных публикаций</span></div><div><span className="stat-value">{report.webResults?.length || 0}</span><span>веб-материалов</span></div>
               <div><span className="stat-value">{report.sources.filter((source) => source.status === 'ok').length}/{report.sources.length}</span><span>лент загружено</span></div>
             </div>
             {report.warnings.map((warning) => <p className="notice" key={warning}>{warning}</p>)}
@@ -127,6 +141,7 @@ export default function TrendsPage() {
                 <details><summary>Публикации и основания ({evidence.length})</summary><ul className="evidence-list">{evidence.map((article) => <li key={article.id}><a href={article.url} target="_blank" rel="noopener noreferrer">{article.title}<span aria-hidden="true"> ↗</span></a><span className="mono">{article.sourceName} · {dateLabel(article.publishedAt)}{insight?.evidenceIds.includes(article.id) ? ' · ссылка AI-разбора' : ''}</span></li>)}</ul></details>
               </article>
             })}</div>
+            <AgentResults key={report.id} report={report} onFeedback={() => setRevision((value) => value + 1)} />
             <RecentArticles report={report} />
             <details className="source-details"><summary>Состояние источников</summary><ul>{report.sources.map((source) => <li key={source.sourceId}><span>{source.name}</span><span className="mono">{source.status === 'ok' ? `${source.articleCount} публикаций${source.cached ? ' · кэш' : ''}` : source.error}</span></li>)}</ul></details>
           </div>

@@ -12,3 +12,6 @@ node_modules/
 dist/
 build/
 *.log
+
+# Local personal profiles, research memory and SQLite journals
+backend/data/

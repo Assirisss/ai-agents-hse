@@ -6,7 +6,7 @@ import type { TrendResearchService } from './service.js'
 export function createTrendTool(service: TrendResearchService) {
   return {
     name: 'search_trends',
-    description: 'Собрать материалы из настроенных RSS-источников по области и запросу, найти сигналы роста упоминаний в выборке, вернуть даты и доказательства. Live по умолчанию; demo только по явному запросу. Не подтверждает глобальную популярность.',
+    description: 'Персональное исследование: RSS, веб-поиск и чтение страниц при useWeb=true, профиль и долговременная память по profileId, выбор инструментов моделью при strategy=agent и enableAi=true. Вернуть основания, релевантность, даты и журнал инструментов. Live по умолчанию; demo только явно. Не подтверждает глобальную популярность.',
     inputSchema: z.toJSONSchema(requestSchema),
     execute: (input: unknown) => service.search(input),
   }

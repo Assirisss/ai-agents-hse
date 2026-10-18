@@ -58,3 +58,45 @@
 .source-details li { display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap; padding: 10px 0; border-bottom: 1px solid var(--separator); color: var(--label-2); font-size: 13px; }
 @media (max-width: 1100px) { .research-fields { grid-template-columns: 1fr 140px; } .query-field { grid-column: 1 / -1; } }
 @media (max-width: 760px) { .research-form { padding: 20px 16px; } .research-fields { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; } .quiet-badge { display: none; } .research-actions { align-items: stretch; flex-direction: column; } .ai-toggle { gap: 6px; } .result-stats { gap: 24px; } .trend-card { padding: 20px; } }
+
+.research-memory { margin-top: 28px; }
+.context-panel { padding: 16px 0; border-top: 1px solid var(--separator); }
+.context-panel:last-of-type { border-bottom: 1px solid var(--separator); }
+.context-panel > summary { display: flex; justify-content: space-between; align-items: center; gap: 12px; cursor: pointer; font-size: 14px; color: var(--label-2); }
+.context-form { display: flex; flex-direction: column; align-items: flex-start; gap: 16px; padding-top: 20px; }
+.context-fields { width: 100%; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.context-fields label, .experience-field { display: flex; flex-direction: column; gap: 8px; color: var(--label-2); font-size: 13px; }
+.context-fields textarea, .experience-field input { width: 100%; min-width: 0; border: 1px solid var(--outline); border-radius: 10px; background: var(--elevated); padding: 10px 12px; color: var(--label); resize: vertical; font-size: 14px; }
+.experience-field { width: min(100%, 500px); }
+.secondary-button { min-height: 36px; padding: 8px 16px; border: 1px solid var(--outline); border-radius: 10px; color: var(--label-body); font-size: 13px; }
+.secondary-button:hover { background: var(--fill); }
+.context-loading { padding: 16px 0 0; }
+.memory-list { padding: 0; list-style: none; }
+.memory-list li { border-bottom: 1px solid var(--separator); }
+.memory-list button { display: flex; width: 100%; flex-direction: column; align-items: flex-start; gap: 6px; padding: 12px 0; text-align: left; font-size: 13px; color: var(--label-2); }
+.memory-list button:hover { color: var(--label); }
+.research-options { display: flex; flex-direction: column; gap: 10px; }
+.agent-panel { margin-top: 32px; padding-top: 24px; border-top: 1px solid var(--separator); }
+.agent-summary { margin: 16px 0 8px; color: var(--label-body); font-size: 14px; }
+.personal-findings { display: grid; gap: 16px; margin-top: 20px; }
+.personal-findings article { padding: 20px 24px; border-radius: 20px; background: var(--elevated); }
+.personal-findings h3 { font-size: 17px; font-weight: 600; }
+.personal-findings p { margin-top: 10px; color: var(--label-2); font-size: 14px; }
+.personal-findings .why-relevant { font-size: 13px; }
+.why-relevant span { color: var(--accent-text); }
+.personal-findings ul { padding-left: 18px; font-size: 13px; }
+.personal-findings li { margin-top: 6px; }
+.tool-trace { margin-top: 24px; }
+.tool-trace ol { padding-left: 20px; }
+.tool-trace li { display: grid; grid-template-columns: 170px minmax(0, 1fr) auto; gap: 12px; padding: 8px 0; font-size: 13px; border-bottom: 1px solid var(--separator); }
+.trace-error { color: var(--orange); font-size: 12px; }
+.web-findings { margin-top: 36px; }
+.web-findings h2 { font-size: 19px; font-weight: 600; }
+.web-grid { display: grid; gap: 16px; margin-top: 20px; }
+.web-grid article { display: flex; flex-direction: column; gap: 12px; padding: 20px 24px; border: 1px solid var(--separator); border-radius: 20px; }
+.web-title { color: var(--label-body); font-size: 16px; }
+.web-grid article > p { color: var(--label-2); font-size: 13px; }
+.feedback-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.feedback-actions button { padding: 5px 10px; border: 1px solid var(--outline); border-radius: 99px; font-size: 12px; color: var(--label-2); }
+.feedback-actions button[aria-pressed="true"] { color: var(--accent-text); border-color: var(--accent); }
+@media (max-width: 760px) { .context-fields { grid-template-columns: 1fr; } .context-panel > summary { align-items: flex-start; flex-direction: column; gap: 6px; } .tool-trace li { grid-template-columns: 1fr; gap: 4px; } .personal-findings article, .web-grid article { padding: 18px; } }
