@@ -11,7 +11,18 @@ const noArgs = z.object({}).strict()
 const historyArgs = z.object({ query: z.string().trim().max(160).default('') }).strict()
 const bookmarkArgs = z.object({ sourceId: z.string().min(1).max(150), reportId: z.string().uuid().optional() }).strict()
 const fold = (value: string) => value.normalize('NFKC').toLocaleLowerCase().replace(/\s+/g, ' ').trim()
-export const wantsResearch = (text: string) => !/(?:^|\s)не\s+(?:(?:надо|нужно)\s+)?(?:ищи|искать|запуска|обновля|поищ|исслед)/iu.test(text) && /найд|поищ|ищи|исследуй|(?:подготовь|сделай|собери|покажи)\s+(?:новый\s+|свежий\s+)?обзор|что нового|обнови|какие\s+(?:(?:сейчас|новые|актуальные|последние)\s+)?(?:тренды|новости)|что\s+(?:сейчас\s+)?популярно|\/найти/iu.test(text)
+/** Search is available for ordinary topic requests too; the model resolves their meaning.
+ * Explicit offline instructions and references to existing evidence remain read-only. */
+export function allowsResearch(raw: string): boolean {
+  const text = fold(raw)
+  if (!text || /(?:^|[\s,;:!?.])не\s+(?:(?:надо|нужно|хочу|следует)\s+)?(?:ищ|искать|запуска|обновля|поищ|исслед|выполня\S*\s+поиск|использ\S*\s+(?:интернет|сеть|поиск))/u.test(text)
+    || /без\s+(?:нового\s+)?(?:интернет|поиск)|никакого\s+(?:нового\s+)?поиска|только\s+(?:по\s+)?(?:сохран[её]нн|локальн)|(?:do not|don't|no)\s+(?:web\s+)?search|offline only/u.test(text)) return false
+  if (/найди|поищи|ищи|искать|исследуй|обнови|\/найти/u.test(text)) return true
+  if (/^(?:\/|тема:|за\s+(?:\d+|неделю|месяц|две недели)|(?:привет|спасибо)(?:$|[\s!.]))/u.test(text)) return false
+  if (/закладк|сохран[её]нн|уже\s+(?:найден|собран)|(?:этот|данный|первый|второй|третий)\s+(?:тренд|источник|отч[её]т)|(?:эти|этого)\s+тренд|(?:в|из|по)\s+(?:этом\s+)?отч[её]т|источник\s*№?\s*\d|поиск\S*\s+не\s+нуж/u.test(text)
+    || /^(?:покажи\s+(?:все\s+)?)?источники[.!?]*$/u.test(text)) return false
+  return true
+}
 export const wantsBookmark = (text: string) => !/(?:^|\s)не\s+(?:(?:надо|нужно|хочу)\s+)?(?:сохран|добав|запом|запомин)/iu.test(text) && /сохрани|сохранить|добав(?:ь|ить)[\s\S]{0,80}в\s+заклад|положи[\s\S]{0,80}в\s+заклад|запомни (?:эт|материал|источник)|(?:save|bookmark)\s+(?:this|the|source|article)|\/сохранить/iu.test(text)
 
 function sourceUrl(value: string) {
@@ -70,7 +81,7 @@ export function compareReports(left: TrendReport, right: TrendReport): ReportCom
 
 const definitions = [
   { name: 'update_brief', schema: briefSchema, effect: 'brief', description: 'Изменить тему, область или период 1–30 дней. query берётся дословно из текущего сообщения пользователя или остаётся прежним. Пример: {"windowDays":14}. Не запускает поиск.' },
-  { name: 'research_now', schema: noArgs, effect: 'research', description: 'Выполнить одно исследование по текущим параметрам. Только когда пользователь явно просит поиск/обновление. Внутри работают обычные RSS, поиск, чтение и расчёты; второй агент не вызывается. Не использовать для вопроса по уже собранным данным.' },
+  { name: 'research_now', schema: noArgs, effect: 'research', description: 'Исследовать текущую тему через RSS и, если включён интернет, веб-поиск. Запрос темы без слова «найди» тоже достаточен: не спрашивай отдельного разрешения. Если тема ещё не задана, сначала update_brief с query из сообщения. Не более одного исследования за сообщение. Внутри обычные инструменты, без второго агента. Не использовать для обсуждения старых источников или при запрете поиска.' },
   { name: 'list_reports', schema: historyArgs, effect: 'read', description: 'Найти прошлые исследования текущего профиля и режима. Пример: {"query":"тренировки"}. Вернёт настоящие reportId для последующих инструментов.' },
   { name: 'filter_sources', schema: filterArgs, effect: 'read', description: 'Фильтровать уже собранные источники без интернета. reportId необязателен: по умолчанию активный отчёт. onlyRecent, onlyDated, onlyRead, kind, publisher, query, limit. Пример: {"onlyRead":true,"limit":5}.' },
   { name: 'inspect_source', schema: inspectArgs, effect: 'read', description: 'Показать сохранённый текст или фрагмент по sourceId, полученному из filter_sources. Не читает произвольные URL и не делает сетевых запросов. Различает страницу, RSS-фрагмент и метаданные.' },
@@ -102,7 +113,7 @@ export function createTrendChatTools(context: TrendChatToolContext, service: Tre
       return { brief: context.conversation.brief, searched: false }
     },
     research_now: async () => {
-      if (!wantsResearch(context.request.text)) throw new ResearchError('Сейчас обсуждаем сохранённые данные. Для нового поиска пользователь должен попросить найти или обновить материалы.')
+      if (!allowsResearch(context.request.text)) throw new ResearchError('Поиск отключён для этого сообщения: пользователь запретил его или обсуждает сохранённые данные.')
       if (!context.conversation.brief.query) throw new ResearchError('Сначала задайте тему исследования.')
       if (researched) throw new ResearchError('За сообщение разрешено одно исследование. Используйте уже полученный отчёт.')
       researched = true
@@ -115,7 +126,6 @@ export function createTrendChatTools(context: TrendChatToolContext, service: Tre
     list_reports: (args: z.infer<typeof historyArgs>) => {
       const records = service.memory.recall(context.conversation.profileId, args.query, context.request.mode)
       context.conversation.reportSelection = records.slice(0, 8).map((record) => record.id)
-      for (const record of records.slice(0, 8)) context.reportIds.add(record.id)
       return records
     },
     filter_sources: (args: z.infer<typeof filterArgs>) => {

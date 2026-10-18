@@ -4,6 +4,7 @@ import { randomUUID } from 'node:crypto'
 import { TrendResearchService } from '../trends/service.js'
 import { TrendChatService } from '../trends/chat.js'
 import { createApp } from '../app.js'
+import { FeedCollector } from '../trends/collector.js'
 import { evaluationPage, evaluationReport } from '../evals/fixtures.js'
 import type { ResearchPlanner } from '../trends/planner.js'
 import type { TrendChatRequest } from '../../../shared/trend-chat.js'
@@ -199,5 +200,60 @@ void test('history numbers resolve deterministically to scoped report IDs for co
     const compared = await chat.send('alice', conversation.id, request('/сравнить 2 1', 1, { mode: 'live' }))
     assert.equal(compared.conversation.messages.at(-1)?.comparison?.added.length, 1)
     assert.equal(compared.conversation.messages.at(-1)?.comparison?.comparable, true)
+  } finally { research.close() }
+})
+
+void test('a bare topic with a typo reaches live web search without a permission exchange or unrelated report link', async () => {
+  const query = 'Стил мужской 2026 год'
+  const searches: string[] = []
+  const collector = new FeedCollector(async () => new Response('<rss version="2.0"><channel><title>Empty</title></channel></rss>'))
+  const page = evaluationPage('menswear', { title: query, snippet: 'Мужской стиль 2026: обзор материалов.', text: 'Мужской стиль 2026: обзор материалов и ограничения выборки.', read: false })
+  let turn = 0
+  const planner: ResearchPlanner = { async next(messages, tools) {
+    if (turn === 0) {
+      const initial = JSON.parse(messages.at(-1)!.content)
+      assert.equal(initial.capabilities.researchAllowed, true)
+      assert.equal(initial.capabilities.internetEnabled, true)
+      assert.ok(tools.some(tool => tool.name === 'research_now'), 'search must be visible before setting a topic')
+      turn++
+      return { content: '', calls: [{ name: 'list_reports', arguments: {} }] }
+    }
+    if (turn++ === 1) return { content: '', calls: [
+      { name: 'update_brief', arguments: { query, domain: 'wardrobe' } },
+      { name: 'research_now', arguments: {} },
+    ] }
+    const output = JSON.parse(messages.filter(m => m.tool_name === 'research_now').at(-1)!.content)
+    return { content: '', calls: [{ name: 'finish_chat', arguments: { text: 'Найдены материалы по теме. Доступен только фрагмент, полная страница ещё не прочитана.', citations: [{ reportId: output.reportId, sourceId: page.id }] } }] }
+  } }
+  const research = new TrendResearchService(collector, undefined, () => new Date('2026-10-18T12:00:00Z'), { web: {
+    provider: 'test', async search(q) { searches.push(q); return [page] }, async read(item) { return { ...item, read: true } },
+  } })
+  try {
+    const unrelated = { ...evaluationReport(), id: randomUUID() }
+    research.memory.saveReport('alice', unrelated)
+    const chat = new TrendChatService(research, planner), conversation = chat.create('alice')
+    const result = await chat.send('alice', conversation.id, request(query, 0, { mode: 'live', useWeb: true }))
+    const message = result.conversation.messages.at(-1)!
+    assert.equal(searches.length, 1)
+    assert.ok(searches[0].includes(query))
+    assert.ok(message.steps!.some(step => step.tool === 'research_now' && step.status === 'ok'))
+    assert.equal(message.citations.length, 1)
+    assert.deepEqual(message.reportIds, [result.conversation.activeReportId])
+    assert.ok(!message.reportIds.includes(unrelated.id))
+    assert.equal(research.memory.state('alice').runs.length, 2)
+  } finally { research.close() }
+})
+
+void test('looking at report history alone does not attach unrelated reports to a model answer', async () => {
+  let turn = 0
+  const planner: ResearchPlanner = { async next() { return { content: '', calls: [turn++ === 0 ? { name: 'list_reports', arguments: {} } : { name: 'finish_chat', arguments: { text: 'В истории есть исследования другой темы.', citations: [] } }] } } }
+  const research = new TrendResearchService()
+  try {
+    research.memory.saveReport('alice', { ...evaluationReport(), id: randomUUID() })
+    const chat = new TrendChatService(research, planner), conversation = chat.create('alice')
+    const result = await chat.send('alice', conversation.id, request('Что у меня в сохранённых отчётах?', 0, { mode: 'live' }))
+    assert.deepEqual(result.conversation.messages.at(-1)!.reportIds, [])
+    const history = await chat.send('alice', conversation.id, request('/история', 1, { mode: 'live' }))
+    assert.equal(history.conversation.messages.at(-1)!.reportIds.length, 1)
   } finally { research.close() }
 })

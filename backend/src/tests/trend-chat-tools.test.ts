@@ -2,7 +2,7 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import { randomUUID } from 'node:crypto'
 import { TrendResearchService } from '../trends/service.js'
-import { createTrendChatTools, filterSources, compareReports } from '../trends/chat-tools.js'
+import { createTrendChatTools, filterSources, compareReports, allowsResearch } from '../trends/chat-tools.js'
 import { evaluationPage, evaluationReport } from '../evals/fixtures.js'
 import type { TrendChatToolContext } from '../../../shared/trend-chat.js'
 
@@ -71,11 +71,11 @@ void test('source inspection never claims metadata as full text and cannot cross
   } finally { service.close() }
 })
 
-void test('research requires explicit intent, has a one-run limit and never nests model calls', async () => {
+void test('research accepts topic requests, has a one-run limit and never nests model calls', async () => {
   const { service, context, tools } = setup()
   try {
     context.conversation.brief.query = 'AI agents'
-    await assert.rejects(tools.execute('research_now', {}), /обсуждаем/)
+    await assert.rejects(tools.execute('research_now', {}), /Поиск отключён/)
     context.request.text = 'Найди AI agents'; context.request.mode = 'demo'
     await tools.execute('research_now', {})
     assert.equal(context.newReports.length, 1)
@@ -113,9 +113,9 @@ void test('discussion and explicit negative instructions cannot authorize web se
   try {
     context.conversation.brief.query = 'AI agents'
     context.request.text = 'Почему этот тренд считается новым?'
-    await assert.rejects(tools.execute('research_now', {}), /обсуждаем/)
+    await assert.rejects(tools.execute('research_now', {}), /Поиск отключён/)
     context.request.text = 'Не ищи в интернете, объясни тренды'
-    await assert.rejects(tools.execute('research_now', {}), /обсуждаем/)
+    await assert.rejects(tools.execute('research_now', {}), /Поиск отключён/)
     context.request.text = 'Что у меня в закладках?'
     await assert.rejects(tools.execute('save_source', { sourceId: 'first' }), /прямой просьбе/)
     context.request.text = 'Не сохраняй этот источник'
@@ -136,4 +136,13 @@ void test('bookmark identity ignores tracking parameters across reports', async 
     assert.equal(context.bookmarks.length, 1)
     assert.equal(context.bookmarks[0].url, 'https://first.example.org/article')
   } finally { service.close() }
+})
+
+void test('research policy accepts natural topic requests while preserving explicit offline and local discussion', () => {
+  for (const text of ['Стил мужской 2026 год', 'Мужской стиль', 'Меня интересует мужская мода', 'Источники по мужскому стилю 2026', 'Какие сейчас тренды?', 'Найди новые материалы по этому отчёту']) {
+    assert.equal(allowsResearch(text), true, text)
+  }
+  for (const text of ['Не ищи в интернете, объясни тренды', 'Не нужно искать мужской стиль 2026', 'Не используй интернет, мужской стиль', 'Без нового поиска: мужская мода', 'Только по сохранённым данным', 'Почему этот тренд считается новым?', 'Объясни первый источник', 'Какие тренды в этом отчёте?', 'Покажи источники', '/тема мода', 'Привет']) {
+    assert.equal(allowsResearch(text), false, text)
+  }
 })
