@@ -6,7 +6,7 @@ import { personalizeWeb, relevance } from './personalization.js'
 import type { WebResearch } from './web.js'
 import type { AgentMessage, ResearchPlanner, ToolDefinition } from './planner.js'
 import { assessEvidence, checkQuotes, createResearchPlan, findingSupport } from './quality.js'
-import { emitProgress, researchBudget as budget, type ResearchRuntime } from './runtime.js'
+import { emitProgress, researchBudget as defaultBudget, type ResearchRuntime } from './runtime.js'
 import { compactContext } from './context.js'
 
 export const researchTools = ['get_user_context', 'get_module_context', 'search_memory', 'get_feed_evidence', 'search_web', 'search_papers', 'read_page', 'assess_evidence', 'finish_research']
@@ -23,6 +23,7 @@ export function approvedTopics(profile: TrendProfile, query: string): { id: stri
 
 export async function runResearchAgent(report: TrendReport, profile: TrendProfile, memory: TrendMemory, web: WebResearch, planner?: ResearchPlanner, runtime: ResearchRuntime = {}): Promise<{ agent: ResearchAgentReport; webResults: WebFinding[] }> {
   planner = planner?.forRun?.() || planner
+  const budget = planner?.provider === 'runpod' ? { ...defaultBudget, durationMs: 300000 } : defaultBudget
   const started = performance.now()
   const steps: ToolTrace[] = []
   const found = new Map<string, WebFinding>()

@@ -14,7 +14,7 @@ export type PlannerResult = { content: string; calls: ToolCall[]; model?: string
 export interface ResearchPlanner {
   readonly provider?: string
   forRun?(): ResearchPlanner
-  next(messages: AgentMessage[], tools: ToolDefinition[], signal: AbortSignal): Promise<PlannerResult>
+  next(messages: AgentMessage[], tools: ToolDefinition[], signal: AbortSignal, onStatus?: (status: 'queued' | 'running') => void): Promise<PlannerResult>
 }
 
 export class OllamaPlanner implements ResearchPlanner {

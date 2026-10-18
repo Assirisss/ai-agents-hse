@@ -1,0 +1,274 @@
+/* Wardrobe: macOS dark appearance. All tokens and overrides stay inside this module. */
+.wd-apple {
+  --elevated: #1c1c1e;
+  --fill: #2c2c2e;
+  --outline: #3a3a3c;
+  --separator: rgb(255 255 255 / 8%);
+  --label-2: #a5a5ad;
+  --label-3: #898991;
+  --wd-photo-surface: #e9e7e2;
+  color: var(--label);
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', system-ui, sans-serif;
+  position: relative;
+  padding-bottom: 20px;
+  color-scheme: dark;
+}
+.wd-apple .wd-page-header { gap: 24px; margin-bottom: 27px; }
+.wd-apple .eyebrow { font-size: 12px; color: var(--label-3); font-weight: 500; margin-bottom: 8px; }
+.wd-apple .screen-title { font-size: 36px; line-height: 1.15; letter-spacing: -.045em; font-weight: 650; margin-bottom: 9px; }
+.wd-apple .body-2 { font-size: 13px; color: var(--label-2); }
+.wd-header-actions { display: flex; flex-direction: column; align-items: flex-end; gap: 12px; }
+.wd-device-note { display: flex; align-items: center; gap: 6px; font-size: 10px; color: var(--label-3); }
+.wd-device-note > span { width: 5px; height: 5px; border-radius: 50%; background: #32d74b; }
+.wd-apple .wd-primary, .wd-apple .wd-secondary { min-height: 40px; padding: 10px 15px; border-radius: 10px; font-size: 12px; line-height: 1.3; font-weight: 550; }
+.wd-apple .wd-primary { background: #0a84ff; color: #fff; }
+.wd-apple .wd-primary:hover:not(:disabled) { background: #2995ff; }
+.wd-apple .wd-secondary { background: #2c2c2e; border: 1px solid rgb(255 255 255 / 4%); }
+.wd-apple .wd-secondary:hover:not(:disabled) { background: #373739; }
+.wd-apple button { transition: background 140ms, border-color 140ms, color 140ms, transform 180ms; }
+.wd-apple button:disabled { cursor: default; }
+.wd-summary-cards { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-bottom: 25px; }
+.wd-summary-card { display: flex; align-items: center; gap: 13px; min-width: 0; text-align: left; padding: 18px; border: 1px solid rgb(255 255 255 / 6%); border-radius: 16px; background: #1c1c1e; }
+.wd-summary-card:hover:not(:disabled) { background: #232326; border-color: rgb(255 255 255 / 12%); }
+.wd-summary-icon { display: grid; place-items: center; width: 42px; height: 42px; border-radius: 12px; flex-shrink: 0; background: rgb(10 132 255 / 14%); color: #64acff; }
+.wd-summary-outfits .wd-summary-icon { background: rgb(48 209 158 / 12%); color: #6acbb0; }
+.wd-summary-wishlist .wd-summary-icon { background: rgb(255 159 10 / 12%); color: #eab567; }
+.wd-summary-card-copy { min-width: 0; flex: 1; }
+.wd-summary-card-copy > strong { display: flex; align-items: baseline; gap: 8px; font-size: 25px; font-weight: 600; line-height: 1.15; font-variant-numeric: tabular-nums; letter-spacing: -.04em; }
+.wd-summary-card-copy > strong > span { font-size: 11px; font-weight: 450; color: #c4c4cb; letter-spacing: 0; }
+.wd-summary-card-copy > small { display: block; margin-top: 6px; font-size: 10px; color: var(--label-3); }
+.wd-summary-card > svg { flex-shrink: 0; color: #63636b; }
+.wd-apple .wd-navigation { width: fit-content; max-width: 100%; display: flex; align-items: center; gap: 3px; border: 1px solid rgb(255 255 255 / 4%); padding: 4px; margin-bottom: 28px; background: #1c1c1e; border-radius: 12px; overflow: auto; scrollbar-width: none; }
+.wd-apple .wd-navigation > button { min-height: 36px; display: flex; align-items: center; justify-content: center; gap: 8px; padding: 8px 18px; border-radius: 8px; font-size: 12px; font-weight: 500; color: #9999a2; }
+.wd-apple .wd-navigation > button.is-active { color: #fff; background: #3a3a3c; box-shadow: 0 1px 3px rgb(0 0 0 / 18%); }
+.wd-apple .wd-navigation > button:hover:not(.is-active) { color: #e5e5ea; background: rgb(255 255 255 / 3%); }
+.wd-apple .wd-navigation > button::after { display: none; }
+.wd-apple .wd-section-heading { align-items: center; margin: 0 0 20px; gap: 16px; }
+.wd-apple .wd-section-heading h2 { font-size: 21px; font-weight: 600; letter-spacing: -.025em; margin: 0 0 5px; }
+.wd-apple .wd-section-heading p:not(.wd-kicker) { font-size: 12px; color: var(--label-3); }
+.wd-heading-count { font-size: 17px; font-weight: 400; color: #71717a; margin-left: 6px; }
+.wd-view-toolbar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 17px; }
+.wd-apple .wd-search { min-height: 39px; flex: 1 1 220px; max-width: none; border: 1px solid rgb(255 255 255 / 5%); background: #1c1c1e; border-radius: 10px; padding: 0 12px; color: #8d8d96; }
+.wd-apple .wd-search input { font-size: 12px; padding: 10px 0; }
+.wd-apple .wd-search input::placeholder { color: #787881; }
+.wd-filter-toggle { display: flex; align-items: center; gap: 7px; background: #1c1c1e; min-height: 39px; padding: 0 12px; border: 1px solid rgb(255 255 255 / 5%); border-radius: 10px; font-size: 12px; color: #c3c3cb; }
+.wd-filter-toggle > span { display: grid; place-items: center; min-width: 17px; height: 17px; border-radius: 5px; background: #0a84ff; color: #fff; font-size: 10px; }
+.wd-apple .wd-filter select { background: #1c1c1e; border-color: rgb(255 255 255 / 5%); border-radius: 10px; min-height: 39px; height: 39px; padding: 0 10px; font-size: 11px; }
+.wd-apple .wd-icon-button { border-radius: 9px; background: #2c2c2e; flex-shrink: 0; }
+.wd-apple .wd-density { width: 39px; height: 39px; background: #1c1c1e; border: 1px solid rgb(255 255 255 / 5%); }
+.wd-apple .is-selected { color: #80bcff; }
+.wd-filter-panel { display: flex; align-items: flex-end; gap: 12px; flex-wrap: wrap; margin-bottom: 18px; padding: 15px; border-radius: 12px; background: #171719; border: 1px solid rgb(255 255 255 / 6%); }
+.wd-filter-panel .wd-filter { display: flex; flex-direction: column; gap: 6px; }
+.wd-filter-panel .wd-filter > span { font-size: 10px; color: var(--label-3); }
+.wd-apple .wd-categories { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: thin; gap: 6px; margin: 0 0 20px; padding: 3px 2px 7px; }
+.wd-apple .wd-categories > button { flex-shrink: 0; font-size: 11px; min-height: 32px; padding: 6px 12px; border-radius: 8px; }
+.wd-apple .wd-categories > button.is-active { background: #2c2c2e; border-color: rgb(255 255 255 / 7%); color: #f5f5f7; }
+.wd-apple .wd-results { font-size: 10px; margin-bottom: 0; padding-bottom: 14px; }
+.wd-apple .wd-garment-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; }
+.wd-apple .wd-garment-grid.is-compact { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; }
+.wd-apple .wd-garment { display: flex; flex-direction: column; overflow: hidden; border-radius: 17px; background: #1c1c1e; border: 1px solid rgb(255 255 255 / 5%); }
+.wd-apple .wd-garment:hover { transform: translateY(-2px); border-color: rgb(255 255 255 / 16%); }
+.wd-apple .wd-garment-photo { width: 100%; aspect-ratio: 1 / 1.04; border-radius: 0; background: #e8e6e0; }
+.wd-apple .wd-garment-photo img { padding: 22px; }
+.wd-apple .wd-garment-open { opacity: 0; width: 28px; height: 28px; }
+.wd-apple .wd-garment:hover .wd-garment-open, .wd-apple .wd-garment:focus-visible .wd-garment-open { opacity: 1; }
+.wd-garment-info { padding: 12px 14px 15px; width: 100%; }
+.wd-apple .wd-garment-meta { margin: 0 0 6px; font-size: 10px; }
+.wd-apple .wd-garment h3 { font-size: 14px; font-weight: 550; line-height: 1.35; color: #eeeef2; }
+.wd-garment-info > p { color: var(--label-3); font-size: 11px; margin-top: 4px; }
+.wd-wear-pill { display: inline-flex; font-size: 9px; margin-top: 11px; padding: 3px 7px; border-radius: 5px; background: rgb(255 255 255 / 5%); color: #92929a; }
+.wd-wear-pill.has-wears { color: #93b9aa; background: rgb(83 160 128 / 10%); }
+.wd-selection-check { display: grid; place-items: center; position: absolute; right: 11px; top: 11px; width: 25px; height: 25px; border: 1.5px solid #a7a49d; border-radius: 50%; background: rgb(255 255 255 / 60%); color: white; }
+.wd-apple .wd-garment.is-selected { border: 2px solid #0a84ff; }
+.wd-apple .wd-garment.is-selected .wd-selection-check { border-color: #0a84ff; background: #0a84ff; }
+.wd-apple .wd-add-card { aspect-ratio: auto; min-height: 280px; align-self: stretch; border-radius: 17px; border-color: #303034; color: #9999a2; }
+.wd-apple .wd-add-card > span { width: 42px; height: 42px; border-radius: 12px; background: #1c1c1e; }
+.wd-selection-bar { position: sticky; bottom: 16px; z-index: 40; display: flex; align-items: center; justify-content: space-between; gap: 16px; background: rgb(40 40 44 / 95%); border: 1px solid rgb(255 255 255 / 12%); border-radius: 16px; padding: 14px 18px; margin: 22px auto 0; max-width: 650px; backdrop-filter: blur(20px); box-shadow: 0 5px 24px rgb(0 0 0 / 20%); }
+.wd-selection-bar > div { display: flex; align-items: center; gap: 12px; font-size: 12px; }
+.wd-selection-bar > div > svg { color: #80bcff; }
+.wd-selection-bar .wd-text-button { font-size: 12px; }
+.wd-collection-welcome { display: flex; align-items: center; flex-direction: column; text-align: center; padding: 30px 24px 40px; border-radius: 22px; border: 1px solid rgb(255 255 255 / 6%); background: #151517; }
+.wd-welcome-art { display: flex; align-items: center; padding: 10px 0 32px; }
+.wd-welcome-art > span { display: grid; place-items: center; width: 115px; height: 130px; background: #292928; border: 1px solid rgb(255 255 255 / 8%); border-radius: 22px; color: #b9b1a1; transform: rotate(-12deg); }
+.wd-welcome-art > span:nth-child(2) { margin: 0 -20px; transform: translateY(-10px) rotate(2deg); background: #242b31; color: #92a7b9; z-index: 1; }
+.wd-welcome-art > span:nth-child(3) { transform: rotate(12deg); background: #2b2926; color: #b7a690; }
+.wd-collection-welcome h2 { font-size: 31px; font-weight: 600; line-height: 1.15; letter-spacing: -.04em; margin: 14px 0; }
+.wd-collection-welcome h2 > span { color: #8c8c95; }
+.wd-collection-welcome > p:not(.wd-kicker) { color: var(--label-2); font-size: 12px; line-height: 1.7; margin-bottom: 23px; }
+.wd-apple .wd-kicker { font-size: 9px; letter-spacing: .09em; color: #898991; }
+.wd-apple .wd-refined-empty { background: #151517; border: 1px solid rgb(255 255 255 / 6%); border-radius: 20px; min-height: 320px; }
+.wd-empty-icon { display: grid; place-items: center; width: 62px; height: 62px; border-radius: 17px; background: #242428; color: #9d9da7; margin-bottom: 3px; }
+.wd-mini-segment { display: flex; gap: 3px; background: #1c1c1e; padding: 4px; border-radius: 10px; }
+.wd-mini-segment button { min-height: 31px; white-space: nowrap; color: #a1a1aa; padding: 5px 13px; font-size: 11px; border-radius: 7px; }
+.wd-mini-segment button.is-active { background: #37373a; color: #f5f5f7; }
+.wd-apple .wd-outfits-grid, .wd-wishlist-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; }
+.wd-apple .wd-outfit-card, .wd-wishlist-card { border: 1px solid rgb(255 255 255 / 6%); border-radius: 17px; background: #1c1c1e; overflow: hidden; min-width: 0; }
+.wd-apple .wd-outfit-card-body { padding: 15px; }
+.wd-outfit-card-title { display: flex; align-items: center; gap: 10px; justify-content: space-between; }
+.wd-outfit-card-title .wd-icon-button { width: 28px; height: 28px; border-radius: 7px; background: transparent; }
+.wd-outfit-card-title .wd-icon-button:hover { background: #333337; }
+.wd-apple .wd-outfit-card h3 { font-weight: 550; font-size: 14px; }
+.wd-apple .wd-outfit-preview-label { right: 10px; left: auto; width: auto; gap: 14px; font-size: 9px; background: rgb(255 255 255 / 87%); }
+.wd-apple .wd-outfit-wears { font-size: 10px; }
+.wd-apple .wd-outfit-empty { background: #151517; border-color: rgb(255 255 255 / 6%); }
+.wd-apple:has(.wd-outfit-editor) .wd-summary-cards { display: none; }
+.wd-apple .wd-outfit-editor > .wd-section-heading { position: sticky; top: 0; z-index: 35; padding: 14px 0; margin: -4px 0 20px; background: rgb(0 0 0 / 90%); backdrop-filter: blur(18px); border-bottom: 1px solid var(--separator); }
+.wd-apple .wd-outfit-editor .wd-section-heading h2 { font-size: 20px; }
+.wd-apple .wd-outfit-workspace { grid-template-columns: minmax(0, 1.4fr) minmax(235px, .8fr); gap: 22px; }
+.wd-apple .wd-outfit-sidebar { position: sticky; top: 90px; border: 1px solid rgb(255 255 255 / 6%); border-radius: 15px; padding: 17px; background: #171719; }
+.wd-apple .wd-layer-controls { margin: 0 0 18px; padding: 13px; background: #252528; border-radius: 10px; }
+.wd-apple .wd-layer-controls .wd-inline-actions { gap: 10px; }
+.wd-apple .wd-selection-hint { font-size: 10px; margin: 0 0 18px; }
+.wd-apple .wd-board { border-radius: 15px; }
+.wd-apple .wd-board-layer.is-selected { border: 1.5px solid #0a84ff; color: inherit; }
+.wd-canvas-toolbar { display: flex; align-items: center; gap: 14px; justify-content: space-between; margin-bottom: 10px; color: var(--label-3); font-size: 10px; }
+.wd-canvas-toolbar .wd-text-button { display: flex; align-items: center; gap: 6px; }
+.wd-undo-group { display: flex; gap: 5px; }
+.wd-undo-group .wd-icon-button { width: 30px; height: 30px; background: #1c1c1e; }
+.wd-apple .wd-board-hint { font-size: 10px; line-height: 1.6; }
+.wd-apple .wd-fields input, .wd-apple .wd-fields select, .wd-apple .wd-fields textarea { border: 1px solid rgb(255 255 255 / 8%); background: #252528; border-radius: 9px; font-size: 12px; padding: 10px 11px; }
+.wd-apple .wd-fields label { font-size: 11px; color: #b0b0b8; }
+.wd-apple .wd-fields { gap: 14px; }
+.wd-apple .wd-palette-heading h3 { font-size: 13px; }
+.wd-apple .wd-item-palette { max-height: max(180px, calc(100svh - 470px)); }
+.wd-apple .wd-palette-photo { border-radius: 9px; }
+.wd-apple .wd-palette-photo > span { width: 20px; height: 20px; }
+.wd-apple .wd-palette-filters { gap: 7px; }
+.wd-apple .wd-palette-filters input, .wd-apple .wd-palette-filters select { font-size: 11px; }
+.wd-apple .wd-palette-heading { margin: 22px 0 12px; }
+.wd-apple .wd-dialog { background: #1c1c1e; border: 1px solid #424245; border-radius: 22px; box-shadow: 0 25px 90px rgb(0 0 0 / 45%); }
+.wd-apple .wd-dialog-header { padding: 24px 26px 20px; }
+.wd-apple .wd-dialog-header h2 { font-size: 23px; font-weight: 600; }
+.wd-apple .wd-dialog-header .wd-icon-button { border-radius: 50%; }
+.wd-apple .wd-editor-body { gap: 24px; padding: 24px 26px 0; }
+.wd-apple .wd-photo-upload { background: #242426; border-color: #424245; }
+.wd-apple .wd-photo-upload-filled, .wd-apple .wd-photo-upload-filled:not(:disabled):hover { background: #e8e6e0; border-color: transparent; }
+.wd-apple .wd-photo-replace { background: rgb(36 36 38 / 92%); backdrop-filter: blur(10px); }
+.wd-apple .wd-photo-note { font-size: 10px; }
+.wd-apple .wd-dialog-footer { padding: 19px 26px; margin-top: 24px; }
+.wd-apple .wd-log-form { background: #1c1c1e; border: 1px solid rgb(255 255 255 / 5%); padding: 17px; gap: 12px; }
+.wd-apple .wd-log-form input, .wd-apple .wd-log-form select { background: #2c2c2e; }
+.wd-apple .wd-wear-summary > div { background: #1c1c1e; border: 1px solid rgb(255 255 255 / 5%); border-radius: 14px; padding: 18px; }
+.wd-apple .wd-wear-summary strong { font-size: 30px; font-weight: 600; }
+.wd-apple .wd-wear-summary span { font-size: 11px; }
+.wd-apple .wd-history-columns { gap: 28px; }
+.wd-apple .wd-history-log, .wd-apple .wd-garment-stats { padding: 20px; border: 1px solid rgb(255 255 255 / 6%); border-radius: 16px; background: #151517; }
+.wd-apple .wd-history-columns h3 { font-size: 15px; font-weight: 550; }
+.wd-apple .wd-history-log li > strong { font-size: 13px; }
+.wd-apple .wd-history-log time { font-size: 10px; color: #9898a1; }
+.wd-apple .wd-history-log li { padding: 16px 0; }
+.wd-apple .wd-history-log li:last-child, .wd-apple .wd-garment-stats li:last-child { border: 0; padding-bottom: 0; }
+.wd-apple .wd-garment-stats li > div > strong { font-size: 12px; }
+.wd-apple .wd-history-log .wd-text-button { color: #8c8c97; font-size: 10px; }
+.wd-shopping-summary { display: flex; align-items: center; gap: 14px; padding: 18px; border-radius: 15px; background: #1c1c1e; border: 1px solid rgb(255 255 255 / 6%); margin-bottom: 20px; }
+.wd-shopping-summary .wd-summary-icon { color: #eab567; background: rgb(255 159 10 / 12%); }
+.wd-shopping-summary > div { display: flex; flex-direction: column; gap: 4px; }
+.wd-shopping-summary strong { font-size: 13px; font-weight: 550; }
+.wd-shopping-summary > div > span { font-size: 12px; color: var(--label-2); }
+.wd-summary-footnote { color: var(--label-3); font-size: 10px; margin-left: auto; }
+.wd-wishlist-photo { width: 100%; position: relative; display: block; aspect-ratio: 1 / 1.04; padding: 0; background: #e8e6e0; overflow: hidden; }
+.wd-wishlist-photo > img { width: 100%; height: 100%; object-fit: contain; padding: 20px; }
+.wd-wishlist-no-photo { width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px; background: #28282c; color: #71717d; }
+.wd-wishlist-no-photo > span { font-size: 11px; }
+.wd-priority-badge { position: absolute; left: 10px; top: 10px; background: rgb(34 34 36 / 88%); color: #dedee4; padding: 4px 8px; border-radius: 6px; font-size: 9px; backdrop-filter: blur(10px); }
+.wd-priority-badge.is-high { color: #ffca85; background: rgb(70 47 25 / 94%); }
+.wd-wishlist-card-body { padding: 15px; }
+.wd-card-eyebrow { color: var(--label-3); font-size: 10px; }
+.wd-wishlist-card h3 { font-size: 14px; line-height: 1.4; font-weight: 550; margin-top: 5px; overflow-wrap: anywhere; }
+.wd-price { font-size: 21px; font-weight: 550; letter-spacing: -.03em; margin-top: 10px; }
+.wd-price > span { font-size: 12px; font-weight: 400; letter-spacing: 0; color: #8d8d97; }
+.wd-wishlist-notes { font-size: 11px; color: var(--label-2); margin-top: 8px; overflow-wrap: anywhere; white-space: pre-wrap; }
+.wd-wishlist-links { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin: 12px 0; }
+.wd-wishlist-links a { font-size: 11px; color: #72b1fb; }
+.wd-wishlist-card-body > .wd-secondary { width: 100%; min-height: 36px; font-size: 11px; }
+.wd-wishlist-card-body > .wd-worn-button { font-size: 11px; }
+.wd-apple .wd-wishlist-dialog { width: min(780px, calc(100vw - 32px)); }
+.wd-toast { position: fixed; z-index: 100; bottom: 24px; right: 28px; max-width: min(440px, calc(100vw - 40px)); display: flex; align-items: center; gap: 11px; padding: 14px 16px; border-radius: 14px; background: rgb(45 45 48 / 96%); border: 1px solid rgb(255 255 255 / 15%); backdrop-filter: blur(20px); box-shadow: 0 5px 30px rgb(0 0 0 / 30%); }
+.wd-toast > span { color: #6ed49b; display: flex; }
+.wd-toast > p { font-size: 12px; color: #eeeeF2; }
+.wd-toast > button { display: grid; place-items: center; padding: 4px; margin-left: 8px; color: #9999a3; }
+.wd-loading-dot { width: 8px; height: 8px; border-radius: 50%; background: #0a84ff; animation: wd-pulse 1s infinite alternate; }
+@keyframes wd-pulse { to { opacity: .25; } }
+@media (max-width: 1150px) {
+  .wd-summary-card { padding: 15px; gap: 10px; }
+  .wd-summary-card-copy > strong { flex-direction: column; gap: 5px; }
+  .wd-summary-card-copy > small, .wd-summary-card > svg { display: none; }
+  .wd-apple .wd-outfits-grid, .wd-wishlist-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .wd-apple .wd-garment-grid.is-compact { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+@media (max-width: 1000px) {
+  .wd-apple .wd-outfit-workspace { grid-template-columns: minmax(0, 1fr); }
+  .wd-apple .wd-outfit-sidebar { position: static; }
+  .wd-apple .wd-item-palette { max-height: 350px; grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .wd-apple .wd-outfit-canvas { max-width: 560px; }
+  .wd-apple .wd-history-columns { grid-template-columns: 1fr; }
+  .wd-apple .wd-garment-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 600px) {
+  .wd-apple .wd-page-header { flex-direction: row; align-items: center; gap: 12px; margin-bottom: 22px; }
+  .wd-apple .screen-title { font-size: 31px; }
+  .wd-apple .eyebrow, .wd-device-note { display: none; }
+  .wd-apple .body-2 { font-size: 11px; max-width: 25ch; }
+  .wd-apple .wd-page-header .wd-primary { margin: 0; font-size: 11px; padding: 10px 11px; min-height: 42px; gap: 6px; }
+  .wd-summary-cards { gap: 8px; margin-bottom: 20px; }
+  .wd-summary-card { flex-direction: column; align-items: flex-start; padding: 12px; gap: 10px; border-radius: 13px; }
+  .wd-summary-icon { width: 32px; height: 32px; border-radius: 9px; }
+  .wd-summary-icon > svg { width: 18px; height: 18px; }
+  .wd-summary-card-copy > strong { font-size: 23px; gap: 5px; }
+  .wd-summary-card-copy > strong > span { font-size: 9px; line-height: 1.4; }
+  .wd-apple .wd-navigation { width: 100%; margin-bottom: 24px; gap: 2px; }
+  .wd-apple .wd-navigation > button { flex: 1; flex-direction: column; gap: 5px; padding: 8px 6px; min-height: 52px; font-size: 10px; }
+  .wd-apple .wd-navigation > button > svg { width: 18px; height: 18px; }
+  .wd-apple .wd-section-heading { gap: 12px; }
+  .wd-apple .wd-section-heading h2 { font-size: 20px; }
+  .wd-apple .wd-section-heading p:not(.wd-kicker) { font-size: 11px; }
+  .wd-apple .wd-section-heading > .wd-secondary { font-size: 10px; min-height: 39px; padding: 9px 10px; }
+  .wd-apple .wd-view-toolbar { gap: 8px; }
+  .wd-apple .wd-search { min-width: 100%; min-height: 42px; }
+  .wd-apple .wd-search input { font-size: 13px; }
+  .wd-apple .wd-filter-toggle { min-height: 40px; }
+  .wd-apple .wd-sort { flex: 1; }
+  .wd-apple .wd-sort select { width: 100%; }
+  .wd-apple .wd-view-toolbar .wd-filter { flex: 1; }
+  .wd-apple .wd-view-toolbar .wd-filter select { width: 100%; }
+  .wd-apple .wd-categories { padding-bottom: 9px; margin-bottom: 14px; }
+  .wd-apple .wd-results > span:last-child:not(:first-child) { display: none; }
+  .wd-apple .wd-garment-grid, .wd-apple .wd-garment-grid.is-compact { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+  .wd-apple .wd-garment-grid.is-compact .wd-garment-info { padding: 9px; }
+  .wd-apple .wd-garment-grid.is-compact .wd-wear-pill, .wd-apple .wd-garment-grid.is-compact .wd-garment-info > p { display: none; }
+  .wd-apple .wd-garment-photo img { padding: 12px; }
+  .wd-garment-info { padding: 11px; }
+  .wd-apple .wd-garment h3 { font-size: 12px; }
+  .wd-wear-pill { font-size: 8px; padding: 3px 5px; }
+  .wd-apple .wd-add-card { min-height: 220px; font-size: 11px; }
+  .wd-selection-bar { bottom: 10px; padding: 12px; gap: 10px; flex-wrap: wrap; }
+  .wd-selection-bar > div { font-size: 11px; }
+  .wd-selection-bar > div:last-child { margin-left: auto; }
+  .wd-selection-bar .wd-primary { min-height: 38px; font-size: 10px; padding: 9px 10px; }
+  .wd-welcome-art > span { width: 85px; height: 105px; border-radius: 17px; }
+  .wd-welcome-art > span > svg { width: 48px; height: 48px; }
+  .wd-collection-welcome h2 { font-size: 28px; }
+  .wd-apple .wd-fields input, .wd-apple .wd-fields textarea, .wd-apple .wd-fields select { font-size: 16px; }
+  .wd-apple .wd-outfit-editor > .wd-section-heading { flex-wrap: wrap; }
+  .wd-apple .wd-outfit-editor .wd-section-heading .wd-inline-actions { width: auto; }
+  .wd-apple .wd-outfit-workspace { gap: 18px; }
+  .wd-apple .wd-outfit-sidebar { padding: 15px; }
+  .wd-apple .wd-item-palette { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .wd-apple .wd-dialog { width: calc(100vw - 20px); }
+  .wd-apple .wd-editor-body { padding: 20px 20px 0; gap: 22px; }
+  .wd-apple .wd-dialog-header, .wd-apple .wd-dialog-footer { padding: 20px; }
+  .wd-apple .wd-dialog-footer .wd-primary { min-height: 44px; }
+  .wd-shopping-summary { padding: 14px; flex-wrap: wrap; gap: 10px; }
+  .wd-shopping-summary .wd-summary-icon { width: 34px; height: 34px; }
+  .wd-summary-footnote { margin-left: 44px; font-size: 9px; }
+  .wd-wishlist-grid { gap: 12px; }
+  .wd-wishlist-card-body { padding: 12px; }
+  .wd-wishlist-card h3 { font-size: 12px; }
+  .wd-price { font-size: 18px; }
+  .wd-wishlist-card-body > .wd-secondary { font-size: 9px; padding: 8px 6px; gap: 5px; }
+  .wd-wishlist-links a, .wd-wishlist-links .wd-text-button { font-size: 10px; }
+  .wd-priority-badge { left: 7px; top: 7px; font-size: 8px; padding: 4px 5px; }
+  .wd-apple .wd-history-log, .wd-apple .wd-garment-stats { padding: 16px; }
+  .wd-toast { right: 16px; bottom: 16px; padding: 13px; max-width: calc(100vw - 32px); }
+  .wd-toast > p { font-size: 11px; }
+}

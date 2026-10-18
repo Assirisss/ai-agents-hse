@@ -1,0 +1,2 @@
+# Local deployment client only. Model dependencies are installed on Runpod.
+runpod-flash==1.21.0

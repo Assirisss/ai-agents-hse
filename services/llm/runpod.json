@@ -1,0 +1,33 @@
+{
+  "endpointId": "65zcbm5ojk45sz",
+  "templateId": "277zl70k6j",
+  "name": "graphite-agent-brain-qwen3-4b",
+  "repo": "runpod-workers/worker-vllm",
+  "hubReleaseId": "cmuxgi0a3000407jv5igk1ezr",
+  "release": "v2.29.0",
+  "gpuIds": "AMPERE_16",
+  "gpuCount": 1,
+  "workersMin": 0,
+  "workersMax": 0,
+  "idleTimeout": 1,
+  "flashboot": "FLASHBOOT",
+  "executionTimeoutMs": 90000,
+  "containerDiskInGb": 20,
+  "env": {
+    "MODEL_NAME": "Qwen/Qwen3-4B-Instruct-2507",
+    "MODEL_REVISION": "cdbee75f17c01a7cc42f958dc650907174af0554",
+    "TOKENIZER_REVISION": "cdbee75f17c01a7cc42f958dc650907174af0554",
+    "DTYPE": "half",
+    "MAX_MODEL_LEN": "16384",
+    "MAX_NUM_SEQS": "1",
+    "GPU_MEMORY_UTILIZATION": "0.85",
+    "ENFORCE_EAGER": "true",
+    "ENABLE_PREFIX_CACHING": "true",
+    "ENABLE_AUTO_TOOL_CHOICE": "true",
+    "TOOL_CALL_PARSER": "hermes",
+    "RAW_OPENAI_OUTPUT": "true",
+    "VLLM_STARTUP_TIMEOUT": "300",
+    "HF_HUB_DISABLE_TELEMETRY": "1",
+    "DISABLE_LOG_STATS": "true"
+  }
+}
