@@ -83,7 +83,7 @@ void test('vision provider failures preserve safe reasons, never retry and never
 })
 
 void test('vision API accepts image-sized JSON and exposes its capability alongside the text agent', async () => {
-  const app = createApp(new TrendResearchService(), undefined, undefined, inspector())
+  const app = createApp(new TrendResearchService(), { vision: inspector() })
   try {
     const response = await app.inject({ method: 'POST', url: '/api/wardrobe/agent/photos/inspect', payload: await photoRequest() })
     assert.equal(response.statusCode, 200)
@@ -126,7 +126,7 @@ void test('default vision uses a bounded free fallback route and reports the mod
 void test('vision API exposes a safe recoverable error while invalid credentials are not retryable', async () => {
   for (const status of [503, 401]) {
     const vision = new OpenRouterWardrobeVision('secret', 'test-model', async () => new Response('private provider details', { status }))
-    const app = createApp(new TrendResearchService(), undefined, undefined, vision)
+    const app = createApp(new TrendResearchService(), { vision })
     try {
       const response = await app.inject({ method: 'POST', url: '/api/wardrobe/agent/photos/inspect', payload: await photoRequest() })
       assert.equal(response.json().retryable, status === 503)

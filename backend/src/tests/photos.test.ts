@@ -16,7 +16,7 @@ void test('photo API accepts binary input, returns a job, status and a separate 
     async result(id) { assert.equal(id, job.id); return png },
     async cancel(id) { assert.equal(id, job.id); cancelled = true },
   }
-  const app = createApp(undefined, remover)
+  const app = createApp(undefined, { remover })
   try {
     assert.deepEqual((await app.inject('/api/wardrobe/photos/capabilities')).json(), { provider: 'birefnet', configured: true })
     const created = await app.inject({ method: 'POST', url: route, headers: { 'content-type': 'image/png' }, payload: png })
@@ -37,7 +37,7 @@ void test('photo API rejects unsupported, empty, oversized and foreign-origin in
   let calls = 0
   const remover = new RunpodBiRefNet()
   remover.start = async () => { calls++; return job }
-  const app = createApp(undefined, remover)
+  const app = createApp(undefined, { remover })
   try {
     for (const [headers, payload, status] of [
       [{ 'content-type': 'application/json' }, '{}', 415],

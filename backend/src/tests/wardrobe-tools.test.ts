@@ -136,7 +136,7 @@ void test('a completed write remains acknowledged when the next model call fails
 void test('real HTTP stream round-trips browser tools and single-use results with the same call id', async () => {
   const s = await setup()
   const service = new TrendResearchService(undefined, undefined, undefined, { memory: new TrendMemory(':memory:') })
-  const app = createApp(service, undefined, planner((_messages, round) => round === 0 ? [{ name: 'wardrobe_add_from_image', arguments: { imageId: s.id } }] : [finish]))
+  const app = createApp(service, { wardrobePlanner: planner((_messages, round) => round === 0 ? [{ name: 'wardrobe_add_from_image', arguments: { imageId: s.id } }] : [finish]) })
   const origin = await app.listen({ host: '127.0.0.1', port: 0 })
   const actualFetch = globalThis.fetch
   let token = ''
@@ -195,7 +195,7 @@ void test('save failure never emits a success receipt; cancellation during a com
 void test('disconnect cleans pending tool tokens and releases the active model run', async () => {
   const s = await setup()
   const service = new TrendResearchService(undefined, undefined, undefined, { memory: new TrendMemory(':memory:') })
-  const app = createApp(service, undefined, planner(() => [{ name: 'wardrobe_inspect_image', arguments: { imageId: s.id } }]))
+  const app = createApp(service, { wardrobePlanner: planner(() => [{ name: 'wardrobe_inspect_image', arguments: { imageId: s.id } }]) })
   const origin = await app.listen({ host: '127.0.0.1', port: 0 })
   try {
     const response = await fetch(`${origin}/api/wardrobe/agent/chat/stream`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(s.request) })

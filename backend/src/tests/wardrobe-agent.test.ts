@@ -168,7 +168,7 @@ void test('transport schemas reject photos, system-role injection, invalid calen
 })
 
 void test('HTTP chat accepts a realistic snapshot over the default body limit and rejects foreign origins', async () => {
-  const app = createApp(new TrendResearchService(), undefined, scripted([[outfit], [finish]]))
+  const app = createApp(new TrendResearchService(), { wardrobePlanner: scripted([[outfit], [finish]]) })
   try {
     const request = fixture()
     request.history = Array.from({ length: 6 }, () => ({ role: 'user', content: 'История разговора. '.repeat(150) }))
@@ -186,7 +186,7 @@ void test('HTTP chat accepts a realistic snapshot over the default body limit an
 })
 
 void test('streaming chat sends tool progress before the final result and validates before opening the stream', async () => {
-  const app = createApp(new TrendResearchService(), undefined, scripted([[outfit], [finish]]))
+  const app = createApp(new TrendResearchService(), { wardrobePlanner: scripted([[outfit], [finish]]) })
   try {
     const response = await app.inject({ method: 'POST', url: '/api/wardrobe/agent/chat/stream', payload: fixture() })
     assert.equal(response.statusCode, 200)
@@ -226,7 +226,7 @@ void test('platform integration delegates to the real trend service, reuses its 
       return [{ id: 'fashion-evidence', title: 'Осенняя повседневная мода', url: 'https://example.org/autumn-fashion', snippet: 'Идеи цвета и сочетаний', publishedAt: '2026-10-17T12:00:00Z', discoveredAt: '2026-10-18T12:00:00Z', sourceName: 'Test publisher', read: false }]
     }, async read(item) { return { ...item, read: true, text: 'Осенняя повседневная мода и сочетания цветов. '.repeat(30) } } },
   })
-  const app = createApp(trends, undefined, scripted([[{ name: 'wardrobe_search_trends', arguments: {} }], [finish]]))
+  const app = createApp(trends, { wardrobePlanner: scripted([[{ name: 'wardrobe_search_trends', arguments: {} }], [finish]]) })
   try {
     const response = await app.inject({ method: 'POST', url: '/api/wardrobe/agent/chat', payload: fixture() })
     assert.equal(response.statusCode, 200)
