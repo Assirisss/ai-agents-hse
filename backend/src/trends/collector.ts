@@ -25,7 +25,7 @@ export class FeedCollector {
   private cache = new Map<string, { expiresAt: number; articles: Evidence[] }>()
   constructor(private fetcher: typeof fetch = fetch, private clock = () => Date.now()) {}
 
-  async collect(sources: TrendSource[]): Promise<Collection> {
+  async collect(sources: TrendSource[], outerSignal?: AbortSignal): Promise<Collection> {
     const results = await Promise.all(sources.map(async (source) => {
       const cached = this.cache.get(source.url)
       if (cached && cached.expiresAt > this.clock()) {
@@ -34,7 +34,7 @@ export class FeedCollector {
       try {
         let url = new URL(source.url)
         const origin = url.origin
-        const signal = AbortSignal.timeout(12000)
+        const signal = outerSignal ? AbortSignal.any([outerSignal, AbortSignal.timeout(12000)]) : AbortSignal.timeout(12000)
         let response: Response | undefined
         for (let redirects = 0; redirects <= 3; redirects++) {
           response = await this.fetcher(url, { redirect: 'manual', signal, headers: { 'User-Agent': 'AIAgentsHSE/0.1 (RSS research)', Accept: 'application/rss+xml, application/atom+xml, application/xml, text/xml' } })

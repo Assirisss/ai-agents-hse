@@ -86,7 +86,7 @@ void test('agent dynamically chooses tools, reads pages and finishes with ground
     const { web, queries } = mockWeb()
     let turn = 0
     const planner: ResearchPlanner = { async next(messages, tools) {
-      assert.ok(tools.some((tool) => tool.name === 'read_page'))
+      assert.ok(tools.some((tool) => tool.name === 'finish_research'))
       if (turn > 0) assert.ok(messages.some((message) => message.role === 'tool'))
       const sequence = [
         { name: 'get_user_context', arguments: {} }, { name: 'search_memory', arguments: { query: 'strength' } },

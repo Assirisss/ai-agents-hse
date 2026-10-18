@@ -17,7 +17,7 @@ const analyzer = model ? new OllamaAnalyzer(model, process.env.TREND_LLM_URL || 
 const memory = new TrendMemory(resolve(process.env.TREND_MEMORY_PATH || 'data/trends.sqlite'))
 const web = new PublicSearch(undefined, process.env.TREND_SEARXNG_URL || undefined)
 const routerKey = process.env.OPENROUTER_API_KEY?.trim()
-const planner = routerKey ? new OpenRouterPlanner(routerKey, process.env.OPENROUTER_MODEL?.trim() || 'openrouter/free') : model ? new OllamaPlanner(model, process.env.TREND_LLM_URL || 'http://127.0.0.1:11434') : undefined
+const planner = routerKey ? new OpenRouterPlanner(routerKey, process.env.TREND_OPENROUTER_MODEL?.trim() || process.env.OPENROUTER_MODEL?.trim() || 'openrouter/free') : model ? new OllamaPlanner(model, process.env.TREND_LLM_URL || 'http://127.0.0.1:11434') : undefined
 const service = new TrendResearchService(new FeedCollector(), analyzer, () => new Date(), { memory, web, planner })
 const app = createApp(service)
 await app.listen({ port, host: '127.0.0.1' })

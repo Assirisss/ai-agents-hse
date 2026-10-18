@@ -9,7 +9,9 @@ import type { TrendAnalyzer } from './analyzer.js'
 import { TrendMemory } from './memory.js'
 import { filterEvidence, relevance } from './personalization.js'
 import { PublicSearch, webEvidence, type WebResearch } from './web.js'
-import { runResearchAgent, researchTools } from './agent.js'
+import { runResearchAgent, researchTools, approvedTopics } from './agent.js'
+import { createResearchPlan } from './quality.js'
+import { emitProgress, type ResearchRuntime } from './runtime.js'
 import type { ResearchPlanner } from './planner.js'
 
 export type ResearchOptions = { memory?: TrendMemory; web?: WebResearch; planner?: ResearchPlanner }
@@ -29,8 +31,11 @@ export class TrendResearchService {
   }
   close() { this.memory.close() }
 
-  async search(input: unknown): Promise<TrendReport> {
+  async search(input: unknown, runtime: ResearchRuntime = {}): Promise<TrendReport> {
     const request = requestSchema.parse(input)
+    const deadline = AbortSignal.timeout(118000)
+    const signal = runtime.signal ? AbortSignal.any([deadline, runtime.signal]) : deadline
+    signal.throwIfAborted()
     if (this.running >= 3) throw new ResearchError('Уже выполняются три исследования. Повторите чуть позже.', 429)
     this.running++
     try {
@@ -38,6 +43,8 @@ export class TrendResearchService {
       const storedProfile = this.memory.profile(request.profileId)
       const modules = request.useModuleContext ? this.memory.moduleContexts(request.profileId).filter((item) => request.domain === 'all' || item.module === request.domain) : []
       const profile = { ...storedProfile, context: [...storedProfile.context, ...modules.flatMap((item) => item.facts)] }
+      const plan = createResearchPlan(request, approvedTopics(profile, request.query).map((item) => item.topic), now.toISOString())
+      emitProgress(runtime, { stage: 'prepare', message: 'Готовим план и учитываем профиль', plan })
       const warnings: string[] = []
       let rawArticles: Evidence[]
       let statuses: SourceStatus[]
@@ -49,7 +56,9 @@ export class TrendResearchService {
       } else {
         const selected = sources.filter((source) => request.domain === 'all' || source.domains.includes(request.domain))
         if (!selected.length && !request.useWeb) throw new ResearchError('Для этой области пока не настроены живые источники.', 422)
-        const collection = await this.collector.collect(selected)
+        emitProgress(runtime, { stage: 'collect', message: 'Собираем публикации из RSS и памяти' })
+        const collection = await this.collector.collect(selected, signal)
+        signal.throwIfAborted()
         fresh = collection.articles
         statuses = collection.sources
         const previous = this.memory.archived(request.profileId).filter((article) => request.domain === 'all' || selected.some((source) => source.id === article.sourceId) || article.sourceId.startsWith(`web:${request.domain}:`))
@@ -67,7 +76,7 @@ export class TrendResearchService {
       }
       const useAgent = request.strategy === 'agent' || request.useWeb
       if (useAgent) {
-        const result = await runResearchAgent(report, profile, this.memory, this.web, request.enableAi ? this.planner : undefined)
+        const result = await runResearchAgent(report, profile, this.memory, this.web, request.enableAi ? this.planner : undefined, { ...runtime, signal })
         report.agent = result.agent
         report.webResults = result.webResults
         const dated = result.webResults.flatMap((item) => { const evidence = webEvidence(item, request.domain); return evidence ? [evidence] : [] })
@@ -87,12 +96,14 @@ export class TrendResearchService {
       }
       report.personalization = { profileId: profile.id, interests: profile.interests, goalsUsed: profile.goals.length,
         seenCount: report.articles.filter((article) => relevance(article, profile, this.memory, request.mode).seenBefore).length }
+      signal.throwIfAborted()
       if (request.remember) {
         try {
           this.memory.archive(profile.id, filterEvidence(fresh, profile, this.memory, request.mode), request.mode)
           this.memory.saveReport(profile.id, report)
         } catch { warnings.push('Не удалось сохранить исследование в память. Результат доступен в текущем ответе, но может отсутствовать в истории.') }
       }
+      emitProgress(runtime, { stage: 'complete', message: 'Обзор готов', quality: report.agent?.quality })
       return report
     } finally { this.running-- }
   }

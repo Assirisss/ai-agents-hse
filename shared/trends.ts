@@ -101,10 +101,18 @@ export type WebFinding = {
   discoveredAt: string
   sourceName: string
   read: boolean
+  publisherId?: string
+  kind?: 'news' | 'paper' | 'page'
+  readable?: boolean
+  fromMemory?: boolean
   relevance?: Relevance
 }
-export type PersonalizedFinding = { title: string; summary: string; whyRelevant: string; evidenceIds: string[] }
-export type ToolTrace = { tool: string; status: 'ok' | 'error'; summary: string; durationMs: number }
+export type PersonalizedFinding = {
+  title: string; summary: string; whyRelevant: string; evidenceIds: string[]
+  supportingQuotes?: { evidenceId: string; quote: string }[]
+  support?: FindingSupport
+}
+export type ToolTrace = { tool: string; status: 'ok' | 'error'; summary: string; durationMs: number; cached?: boolean }
 export type ResearchAgentReport = {
   mode: 'model' | 'workflow'
   status: 'completed' | 'limited' | 'unavailable'
@@ -112,6 +120,9 @@ export type ResearchAgentReport = {
   findings: PersonalizedFinding[]
   summary: string
   stopReason: string
+  plan?: ResearchPlan
+  quality?: EvidenceQuality
+  metrics?: ResearchMetrics
 }
 export type MemorySummary = {
   id: string; query: string; domain: TrendDomain; mode: TrendMode; createdAt: string
@@ -125,3 +136,42 @@ export type UserModuleContext = {
   facts: string[]
   updatedAt: string
 }
+
+export type ResearchPlan = {
+  question: string
+  topics: string[]
+  stages: string[]
+  criteria: { minSources: number; minPublishers: number; minReadPages: number }
+  windowStart: string
+  windowEnd: string
+}
+export type EvidenceQuality = {
+  sources: number
+  publishers: number
+  readPages: number
+  recentSources: number
+  unknownDates: number
+  sufficient: boolean
+  gaps: string[]
+  nextReadIds: string[]
+}
+export type FindingSupport = {
+  level: 'page' | 'excerpt' | 'metadata' | 'mixed'
+  publishers: number
+  recentSources: number
+  verifiedQuotes: number
+  limitations: string[]
+}
+export type ResearchMetrics = {
+  modelCalls: number; toolCalls: number; searches: number; reads: number
+  cachedCalls: number; errors: number; durationMs: number
+  promptTokens: number; completionTokens: number; costUsd: number | null; models: string[]
+}
+export type ResearchProgress = {
+  stage: 'prepare' | 'collect' | 'research' | 'validate' | 'complete'
+  message: string
+  plan?: ResearchPlan
+  step?: ToolTrace
+  quality?: EvidenceQuality
+}
+export type ResearchStreamEvent = { type: 'progress'; progress: ResearchProgress } | { type: 'result'; report: TrendReport } | { type: 'error'; error: string }

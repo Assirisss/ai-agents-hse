@@ -14,11 +14,12 @@ import { readLimitedText } from './http.js'
 export type PublicResponse = { status: number; headers: Record<string, string>; text: string; url: string }
 export type Resolver = (host: string) => Promise<{ address: string; family: number }[]>
 export type Transport = (url: URL, address: { address: string; family: number }, signal: AbortSignal) => Promise<PublicResponse>
+export type SearchOptions = { windowDays: number; referenceTime: string }
 export interface WebResearch {
   readonly provider: string
-  search(query: string, signal: AbortSignal): Promise<WebFinding[]>
+  search(query: string, signal: AbortSignal, options?: SearchOptions): Promise<WebFinding[]>
   read(item: WebFinding, signal: AbortSignal): Promise<WebFinding>
-  papers?(query: string, signal: AbortSignal): Promise<WebFinding[]>
+  papers?(query: string, signal: AbortSignal, options?: SearchOptions): Promise<WebFinding[]>
 }
 
 export function isPublicAddress(address: string): boolean {
@@ -126,9 +127,9 @@ export function parsePage(html: string, previous: WebFinding): WebFinding {
 export class PublicSearch implements WebResearch {
   readonly provider: string
   constructor(private reader = new PublicWebReader(), private searxUrl?: string, private fetcher: typeof fetch = fetch) { this.provider = searxUrl ? 'searxng' : 'google-news-rss' }
-  async search(query: string, signal: AbortSignal): Promise<WebFinding[]> {
+  async search(query: string, signal: AbortSignal, options?: SearchOptions): Promise<WebFinding[]> {
     const discoveredAt = new Date().toISOString()
-    let items: { title: string; url: string; snippet: string }[]
+    let items: { title: string; url: string; snippet: string; publisherId?: string }[]
     if (this.searxUrl) {
       const url = new URL('search', this.searxUrl.endsWith('/') ? this.searxUrl : `${this.searxUrl}/`)
       url.searchParams.set('q', query); url.searchParams.set('format', 'json')
@@ -139,10 +140,12 @@ export class PublicSearch implements WebResearch {
       items = value.results.slice(0, 8).map((item) => ({ title: item.title || '', url: item.url || '', snippet: item.content || '' }))
     } else {
       const url = new URL('https://news.google.com/rss/search')
-      url.searchParams.set('q', query); url.searchParams.set('hl', 'en-US'); url.searchParams.set('gl', 'US'); url.searchParams.set('ceid', 'US:en')
+      const after = options ? ` after:${new Date(Date.parse(options.referenceTime) - options.windowDays * 86400000).toISOString().slice(0, 10)}` : ''
+      url.searchParams.set('q', `${query}${after}`); url.searchParams.set('hl', 'en-US'); url.searchParams.set('gl', 'US'); url.searchParams.set('ceid', 'US:en')
       const response = await this.reader.get(url.toString(), signal)
-      const feed = await new Parser().parseString(response.text)
-      items = feed.items.slice(0, 8).map((item) => ({ title: item.title || '', url: item.link || '', snippet: item.contentSnippet || item.content || '' }))
+      const newsParser = new Parser<Record<string, never>, { newsSource?: { $?: { url?: string } }[] }>({ customFields: { item: [['source', 'newsSource', { keepArray: true }]] } })
+      const feed = await newsParser.parseString(response.text)
+      items = feed.items.slice(0, 8).map((item) => ({ title: item.title || '', url: item.link || '', snippet: item.contentSnippet || item.content || '', publisherId: (() => { try { return new URL(item.newsSource?.[0]?.$?.url || '').hostname.replace(/^www\./, '') } catch { return undefined } })() }))
     }
     const seen = new Set<string>()
     return items.flatMap((item) => {
@@ -153,14 +156,16 @@ export class PublicSearch implements WebResearch {
       if (terms.length && terms.filter((term) => text.includes(term)).length < Math.min(2, terms.length)) return []
       seen.add(url)
       // Search-feed timestamps are not trusted as article publication dates.
-      return [{ id: `web-${createHash('sha256').update(url).digest('hex').slice(0, 16)}`, title: plainText(item.title).slice(0, 300), url, snippet: plainText(item.snippet).slice(0, 1000), publishedAt: null, discoveredAt, sourceName: new URL(url).hostname, read: false }]
+      return [{ id: `web-${createHash('sha256').update(url).digest('hex').slice(0, 16)}`, title: plainText(item.title).slice(0, 300), url, snippet: plainText(item.snippet).slice(0, 1000), publishedAt: null, discoveredAt, sourceName: item.publisherId || new URL(url).hostname, publisherId: item.publisherId, kind: 'news' as const, readable: new URL(url).hostname !== 'news.google.com', read: false }]
     })
   }
-  async papers(query: string, signal: AbortSignal): Promise<WebFinding[]> {
+  async papers(query: string, signal: AbortSignal, options?: SearchOptions): Promise<WebFinding[]> {
     const url = new URL('https://api.crossref.org/works')
     url.searchParams.set('query.bibliographic', query)
     url.searchParams.set('rows', '6')
-    url.searchParams.set('filter', `from-pub-date:${new Date().getUTCFullYear() - 2}-01-01,type:journal-article`)
+    const from = options ? new Date(Date.parse(options.referenceTime) - options.windowDays * 86400000).toISOString().slice(0, 10) : `${new Date().getUTCFullYear() - 2}-01-01`
+    url.searchParams.set('filter', `from-pub-date:${from},type:journal-article`)
+    url.searchParams.set('sort', 'published'); url.searchParams.set('order', 'desc')
     const response = await this.reader.get(url.toString(), signal)
     const value = JSON.parse(response.text) as { message?: { items?: Record<string, unknown>[] } }
     if (!Array.isArray(value.message?.items)) throw new Error('Некорректный ответ Crossref')
@@ -175,7 +180,7 @@ export class PublicSearch implements WebResearch {
       const parts = published?.['date-parts']?.[0]
       const publishedAt = parts && parts.length >= 3 ? validDate(`${parts[0]}-${String(parts[1]).padStart(2, '0')}-${String(parts[2]).padStart(2, '0')}T00:00:00Z`) : null
       const snippet = typeof item.abstract === 'string' ? plainText(item.abstract).slice(0, 1000) : `Научная публикация. DOI: ${doi}. Метаданные Crossref; полный текст может быть недоступен.`
-      return [{ id: `paper-${createHash('sha256').update(doi).digest('hex').slice(0, 16)}`, title: title.slice(0, 300), url: target, snippet, publishedAt, discoveredAt: new Date().toISOString(), sourceName: typeof item.publisher === 'string' ? item.publisher : 'Crossref', read: false }]
+      return [{ id: `paper-${createHash('sha256').update(doi).digest('hex').slice(0, 16)}`, title: title.slice(0, 300), url: target, snippet, publishedAt, discoveredAt: new Date().toISOString(), sourceName: typeof item.publisher === 'string' ? item.publisher : 'Crossref', publisherId: new URL(target).hostname.replace(/^www\./, ''), kind: 'paper' as const, readable: true, read: false }]
     })
   }
   async read(item: WebFinding, signal: AbortSignal): Promise<WebFinding> {

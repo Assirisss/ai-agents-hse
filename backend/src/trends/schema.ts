@@ -39,6 +39,7 @@ export const finishSchema = z.object({
   findings: z.array(z.object({
     title: z.string().trim().min(1).max(200), summary: z.string().trim().min(1).max(1000),
     whyRelevant: z.string().trim().min(1).max(700), evidenceIds: z.array(z.string()).min(1).max(8),
+    supportingQuotes: z.array(z.object({ evidenceId: z.string(), quote: z.string().trim().min(12).max(240) }).strict()).max(2).optional(),
   }).strict()).max(8),
 }).strict()
 

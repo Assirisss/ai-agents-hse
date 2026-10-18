@@ -1,12 +1,36 @@
+import { PassThrough } from 'node:stream'
 import type { FastifyInstance } from 'fastify'
 import { z } from 'zod'
-import { profileIdSchema, ResearchError } from './schema.js'
+import { profileIdSchema, requestSchema, ResearchError } from './schema.js'
 import { canonicalUrl } from './ranking.js'
+import type { ResearchStreamEvent } from '../../../shared/trends.js'
 import type { TrendResearchService } from './service.js'
 
 export function registerTrendRoutes(app: FastifyInstance, service: TrendResearchService) {
   app.get('/api/trends/capabilities', async () => service.capabilities())
   app.post('/api/trends/research', async (request) => service.search(request.body))
+  app.post('/api/trends/research/stream', (request, reply) => {
+    const input = requestSchema.parse(request.body)
+    const controller = new AbortController()
+    const output = new PassThrough()
+    let completed = false
+    // Fastify owns stream lifecycle/backpressure and destroys it on client disconnect.
+    output.on('close', () => { if (!completed) controller.abort() })
+    reply.type('application/x-ndjson; charset=utf-8').header('X-Accel-Buffering', 'no').send(output)
+    const send = (event: ResearchStreamEvent) => { if (!output.destroyed && !controller.signal.aborted) output.write(`${JSON.stringify(event)}\n`) }
+    void (async () => {
+      try {
+        const report = await service.search(input, { signal: controller.signal, onProgress: (progress) => send({ type: 'progress', progress }) })
+        send({ type: 'result', report })
+      } catch (error) {
+        if (!controller.signal.aborted) send({ type: 'error', error: error instanceof ResearchError ? error.message : 'Исследование прервано или служба недоступна. Повторите запрос.' })
+      } finally {
+        completed = true
+        if (!output.destroyed) output.end()
+      }
+    })()
+    return reply
+  })
   app.get('/api/trends/profiles/:id', async (request) => {
     const { id } = z.object({ id: profileIdSchema }).parse(request.params)
     return service.memory.profile(id)

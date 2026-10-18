@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
-import type { TrendCapabilities, TrendDomain, TrendMode, TrendReport } from '../../../../shared/trends'
-import { getCapabilities, researchTrends, saveModuleContext } from './api'
+import type { TrendCapabilities, TrendDomain, TrendMode, TrendReport, ResearchProgress, ResearchPlan, ToolTrace } from '../../../../shared/trends'
+import { getCapabilities, streamResearch, saveModuleContext } from './api'
 import './TrendsPage.css'
 import ResearchMemory from './ResearchMemory'
 import AgentResults from './AgentResults'
+import ResearchBrief from './ResearchBrief'
 import { collectModuleContexts } from './moduleContext'
 
 const domains: { id: TrendDomain; label: string }[] = [
@@ -34,10 +35,10 @@ function RecentArticles({ report }: { report: TrendReport }) {
 
 export default function TrendsPage() {
   const [domain, setDomain] = useState<TrendDomain>('all')
-  const [mode, setMode] = useState<TrendMode>('demo')
+  const [mode, setMode] = useState<TrendMode>('live')
   const [query, setQuery] = useState('')
   const [windowDays, setWindowDays] = useState(7)
-  const [enableAi, setEnableAi] = useState(false)
+  const [enableAi, setEnableAi] = useState(true)
   const [useWeb, setUseWeb] = useState(true)
   const [useModuleContext, setUseModuleContext] = useState(true)
   const [remember, setRemember] = useState(true)
@@ -46,6 +47,9 @@ export default function TrendsPage() {
   const [connectionError, setConnectionError] = useState('')
   const [report, setReport] = useState<TrendReport | null>(null)
   const [error, setError] = useState('')
+  const [progress, setProgress] = useState<ResearchProgress | undefined>()
+  const [plan, setPlan] = useState<ResearchPlan | undefined>()
+  const [steps, setSteps] = useState<ToolTrace[]>([])
   const [busy, setBusy] = useState(false)
   const running = useRef<AbortController | null>(null)
 
@@ -66,26 +70,33 @@ export default function TrendsPage() {
     setBusy(true)
     setError('')
     setReport(null)
+    setProgress({ stage: 'prepare', message: 'Обновляем контекст разделов' })
+    setPlan(undefined)
+    setSteps([])
     try {
       if (useModuleContext) {
         const contexts = await collectModuleContexts()
         await Promise.all(contexts.map((context) => saveModuleContext(context, controller.signal)))
       }
-      const value = await researchTrends({ domain, query, windowDays, mode, limit: 6, enableAi, useWeb: mode === 'live' && useWeb, strategy: 'agent', profileId: 'default', useModuleContext, remember }, controller.signal)
+      const value = await streamResearch({ domain, query, windowDays, mode, limit: 6, enableAi: enableAi && Boolean(capabilities?.agent?.configured), useWeb: mode === 'live' && useWeb, strategy: 'agent', profileId: 'default', useModuleContext, remember }, controller.signal, (event) => {
+        setProgress(event)
+        if (event.plan) setPlan(event.plan)
+        if (event.step) setSteps((previous) => [...previous, event.step!])
+      })
       setReport(value)
       setRevision((value) => value + 1)
       setConnectionError('')
     } catch (cause) {
       if (!controller.signal.aborted) setError(cause instanceof Error ? cause.message : 'Не удалось выполнить поиск.')
-      else setError('Поиск прерван. Можно запустить его ещё раз.')
+      else setError('Исследование остановлено. Незавершённый отчёт не сохраняется.')
     } finally { window.clearTimeout(timeout); setBusy(false) }
   }
 
   return (
     <>
       <header className="trend-header">
-        <div><p className="eyebrow">Общие инструменты</p><h1 className="screen-title">Поиск трендов</h1><p className="body-2">Находите темы, проверяйте сигналы и возвращайтесь к первоисточникам.</p></div>
-        <span className="quiet-badge">Исследование</span>
+        <div><p className="eyebrow">Общие инструменты</p><h1 className="screen-title">Поиск трендов</h1><p className="body-2">Задайте тему. Исследователь соберёт материалы, проверит основания и объяснит, что полезно вам.</p></div>
+        <span className="quiet-badge">Персональный исследователь</span>
       </header>
 
       <ResearchMemory revision={revision} onLoad={setReport} />
@@ -106,8 +117,8 @@ export default function TrendsPage() {
             <label>Период<select value={windowDays} onChange={(event) => setWindowDays(Number(event.target.value))}><option value={3}>3 дня</option><option value={7}>7 дней</option><option value={14}>14 дней</option><option value={30}>30 дней</option></select></label>
           </div>
           <div className="research-actions">
-            <div className="research-options"><label className="ai-toggle"><input type="checkbox" checked={useModuleContext} onChange={(event) => setUseModuleContext(event.target.checked)} /><span>Учитывать данные разделов</span></label><label className="ai-toggle"><input type="checkbox" checked={useWeb} disabled={mode !== 'live'} onChange={(event) => setUseWeb(event.target.checked)} /><span>Искать в интернете</span></label><label className="ai-toggle"><input type="checkbox" checked={remember} onChange={(event) => setRemember(event.target.checked)} /><span>Сохранить в память</span></label><label className="ai-toggle"><input type="checkbox" checked={enableAi} disabled={!capabilities?.ai.configured} onChange={(event) => setEnableAi(event.target.checked)} /><span>Агент с моделью</span><span className="form-caption">{capabilities?.ai.configured ? `${capabilities.ai.provider === 'openrouter' ? 'OpenRouter' : 'Ollama'} настроен на сервере` : 'Без LLM: сценарий инструментов'}</span></label></div>
-            <button className="primary-button" type="submit">{busy ? 'Исследуем…' : 'Найти сигналы'}<span aria-hidden="true">↗</span></button>
+            <div className="research-options"><label className="ai-toggle"><input type="checkbox" checked={useModuleContext} onChange={(event) => setUseModuleContext(event.target.checked)} /><span>Учитывать данные разделов</span></label><label className="ai-toggle"><input type="checkbox" checked={useWeb} disabled={mode !== 'live'} onChange={(event) => setUseWeb(event.target.checked)} /><span>Искать в интернете</span></label><label className="ai-toggle"><input type="checkbox" checked={remember} onChange={(event) => setRemember(event.target.checked)} /><span>Сохранить в память</span></label><label className="ai-toggle"><input type="checkbox" checked={enableAi && Boolean(capabilities?.agent?.configured)} disabled={!capabilities?.agent?.configured} onChange={(event) => setEnableAi(event.target.checked)} /><span>Агент с моделью</span><span className="form-caption">{capabilities?.ai.configured ? `${capabilities.ai.provider === 'openrouter' ? 'OpenRouter' : 'Ollama'} настроен на сервере` : 'Без LLM: сценарий инструментов'}</span></label></div>
+            <button className="primary-button" type="submit">{busy ? 'Исследуем…' : 'Запустить исследование'}<span aria-hidden="true">↗</span></button>
           </div>
         </fieldset>
       </form>
@@ -115,7 +126,7 @@ export default function TrendsPage() {
       {connectionError && !report ? <p className="notice error-notice" role="status">{connectionError}</p> : null}
       {error ? <p className="notice error-notice" role="alert">{error}</p> : null}
       <div aria-live="polite" aria-busy={busy}>
-        {busy ? <div className="search-empty"><span className="loading-dot" /><h2>Собираем материалы</h2><p>Учитываем контекст, ищем материалы и проверяем основания.</p></div> : null}
+        {busy ? <ResearchBrief plan={plan} progress={progress} quality={progress?.quality} steps={steps} onCancel={() => running.current?.abort()} /> : null}
         {!busy && !report && !error ? <div className="search-empty"><svg viewBox="0 0 48 48" aria-hidden="true"><path d="M7 36 20 23l8 6 13-18M29 11h12v12" /></svg><h2>Сначала — тема, затем — доказательства</h2><p>Запустите исследование. Покажем публикации и изменение числа упоминаний за два равных периода.</p></div> : null}
         {report ? (
           <div className="research-results">
@@ -127,9 +138,10 @@ export default function TrendsPage() {
               <div><span className="stat-value">{report.sources.filter((source) => source.status === 'ok').length}/{report.sources.length}</span><span>лент загружено</span></div>
             </div>
             {report.warnings.map((warning) => <p className="notice" key={warning}>{warning}</p>)}
+            <AgentResults key={report.id} report={report} onFeedback={() => setRevision((value) => value + 1)} />
             {report.analysis.status === 'ready' ? <section className="analysis-panel"><p className="eyebrow">AI-разбор · {report.analysis.provider}</p><p>{report.analysis.summary}</p></section> : null}
             {report.analysis.status === 'unavailable' ? <p className="notice error-notice">{report.analysis.error}</p> : null}
-            {!report.trends.length ? <div className="module-empty"><h3 className="empty-heading">Подходящих материалов нет</h3><p className="empty-copy">Измените запрос, область или период.</p></div> : null}
+            {!report.trends.length ? <div className="module-empty"><h3 className="empty-heading">{report.webResults?.length ? 'Расчётный сигнал роста не подтверждён' : 'Подходящих материалов нет'}</h3><p className="empty-copy">{report.webResults?.length ? 'Обзор найденных материалов доступен ниже. Для роста нужна датированная выборка за два периода.' : 'Измените запрос, область или период.'}</p></div> : null}
             <div className="trend-grid">{report.trends.map((trend) => {
               const evidence = report.articles.filter((article) => trend.evidenceIds.includes(article.id))
               const insight = report.analysis.insights?.find((item) => item.trendId === trend.id)
@@ -141,7 +153,6 @@ export default function TrendsPage() {
                 <details><summary>Публикации и основания ({evidence.length})</summary><ul className="evidence-list">{evidence.map((article) => <li key={article.id}><a href={article.url} target="_blank" rel="noopener noreferrer">{article.title}<span aria-hidden="true"> ↗</span></a><span className="mono">{article.sourceName} · {dateLabel(article.publishedAt)}{insight?.evidenceIds.includes(article.id) ? ' · ссылка AI-разбора' : ''}</span></li>)}</ul></details>
               </article>
             })}</div>
-            <AgentResults key={report.id} report={report} onFeedback={() => setRevision((value) => value + 1)} />
             <RecentArticles report={report} />
             <details className="source-details"><summary>Состояние источников</summary><ul>{report.sources.map((source) => <li key={source.sourceId}><span>{source.name}</span><span className="mono">{source.status === 'ok' ? `${source.articleCount} публикаций${source.cached ? ' · кэш' : ''}` : source.error}</span></li>)}</ul></details>
           </div>
