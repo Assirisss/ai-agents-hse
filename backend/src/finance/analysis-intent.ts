@@ -5,6 +5,12 @@ import { dateSchema, moscowToday } from './schema.js'
 export function analysisIntent(raw: string): Exclude<FinanceAnalysisKind, 'breakdown'> | undefined {
   const text = raw.trim().replace(/^\/finance(?:@\w+)?\s+/iu, '')
   if (text.startsWith('/')) return undefined
+  // Descriptions and field edits may contain analytical keywords such as «подписка».
+  if (/^(?:сумма|дата|сч[её]т|категория|описание|тип|получатель)(?:\s|[:=])/iu.test(text)) return undefined
+  const explicitWrite = /^(?:пожалуйста[,\s]+)?(?:запиши|добавь|внеси|учти)(?=$|[^а-яё])/iu.test(text)
+  const question = /\?|(?:^|[^а-яё])(?:почему|сколько|как|какие|найди|покажи|сравни|проанализируй|объясни|разбери|проверь|есть\s+ли|что\s+(?:будет|изменится)|сценари[йя])(?=$|[^а-яё])/iu.test(text)
+  const entry = /(?:^|[^а-яё])(?:потратил[аи]?|заплатил[аи]?|оплатил[аи]?|купил[аи]?|получил[аи]?|заработал[аи]?|перев[её]л|перевела|расход|доход|перевод|зарплата)(?=$|[^а-яё])/iu.test(text)
+  if (explicitWrite || !question && entry && /\d/u.test(text)) return undefined
   if (/что\s+(?:будет|изменится)[\s\S]*если|сценари[йя]|(?:сократ|уменьш|сниз)[\s\S]*(?:%|процент)/iu.test(text)) return 'scenario'
   if (/подписк|регулярн[а-яё]*\s+(?:плат|расход|списан)|постоянн[а-яё]*\s+(?:расход|плат)/iu.test(text)) return 'recurring'
   if (/необычн|подозрительн|аномал|дубликат|странн[а-яё]*\s+(?:трат|расход|списан)/iu.test(text)) return 'unusual'

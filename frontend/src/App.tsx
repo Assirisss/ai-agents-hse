@@ -16,7 +16,7 @@ const pages = [
 ] as const
 
 export default function App() {
-  const [active, setActive] = useState<SectionId>('planning')
+  const [active, setActive] = useState<SectionId>(() => ['default', 'demo'].includes(new URLSearchParams(window.location.search).get('financeProfile') || '') ? 'finance' : 'planning')
 
   return (
     <div className="layout">

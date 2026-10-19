@@ -135,7 +135,7 @@ void test('model configuration is explicit; private key stays in server request 
   assert.equal(sent, 1)
   assert.equal(result.calls[0].id, 'call-next')
   const failing = new FinanceChatPlanner({ model: 'qwen', url: 'https://api.example/v1/chat/completions', apiKey: 'server-secret' }, async () => new Response('server-secret provider error', { status: 401 }))
-  await assert.rejects(failing.next([], [], AbortSignal.timeout(1000)), (error: Error) => error.message === 'Финансовая модель ответила HTTP 401')
+  await assert.rejects(failing.next([], [], AbortSignal.timeout(1000)), (error: Error) => /API-ключ.*HTTP 401/.test(error.message) && !error.message.includes('server-secret'))
 })
 
 void test('receipt recognition preserves missing amount/date, checks item totals, and cannot attach an account', async () => {

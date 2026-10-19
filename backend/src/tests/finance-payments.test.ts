@@ -77,6 +77,25 @@ test('completing a recurring task advances the reminder without creating an expe
   assert.equal((await f.finance.state('owner')).operations.length, 0)
 })
 
+test('Moscow payment recurrence stays at 09:00 across DST, edits and migration of old tasks', async (t) => {
+  const f = fixture(); t.after(f.close)
+  f.planning.saveSettings('owner', { timeZone: 'Europe/Berlin' })
+  const payment = await f.payments.create('owner', { title: 'Подписка', dueDate: '2026-10-19', time: '09:00', rrule: 'FREQ=WEEKLY;BYDAY=MO' })
+  const task = f.planning.task('owner', payment.planningTaskId)
+  delete task.timeZone
+  f.planning.store.saveTask('owner', task)
+  await f.payments.sync('owner')
+  assert.equal(f.planning.task('owner', task.id).timeZone, 'Europe/Moscow')
+  f.planning.updateTask('owner', task.id, { title: 'Переименованная подписка' })
+  const { next } = f.planning.completeTask('owner', task.id)
+  assert.equal(next?.due, '2026-10-26T06:00:00.000Z')
+  assert.equal(next?.timeZone, 'Europe/Moscow')
+  await f.payments.sync('owner')
+  assert.equal((await f.payments.list('owner'))[0]!.time, '09:00')
+  const generic = f.planning.createTask('owner', { title: 'Обычная задача', due: '2026-10-19T06:00:00Z', rrule: 'FREQ=WEEKLY;BYDAY=MO' })
+  assert.equal(f.planning.completeTask('owner', generic.id).next?.due, '2026-10-26T07:00:00.000Z', 'legacy unpinned tasks still use profile timezone')
+})
+
 test('payment draft preserves missing account/category/amount for explicit clarification', async (t) => {
   const f = fixture(); t.after(f.close)
   const payment = await f.payments.create('owner', { title: 'Подписка', dueDate: '2026-10-25' })

@@ -202,3 +202,17 @@ test('worker limits definitive failures to three attempts; ambiguous timeouts ne
   assert.equal(ambiguous.delivery()?.status, 'uncertain')
   assert.equal(ambiguousAttempts, 1)
 })
+
+for (const change of ['unlink', 'relink', 'clear-watchlist'] as const) {
+  test(`worker does not deliver a quote fetched before ${change}`, async () => {
+    const fixture = workerFixture()
+    let changed = false, sends = 0
+    fixture.port.profiles = async () => changed
+      ? change === 'unlink' ? [] : [{ profileId: 'owner', chatId: change === 'relink' ? '8' : '7', watchlist: change === 'clear-watchlist' ? [] : [instrument] }]
+      : [{ profileId: 'owner', chatId: '7', watchlist: [instrument] }]
+    fixture.port.summary = async () => { changed = true; return summary }
+    await new FinanceWorker(fixture.port, async () => { sends++ }, { now: () => NOW }).tick()
+    assert.equal(sends, 0)
+    assert.equal(fixture.delivery()?.status, 'failed')
+  })
+}

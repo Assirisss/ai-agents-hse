@@ -55,7 +55,7 @@ function named<T extends Account | Category>(text: string, items: T[]): { item: 
 }
 
 function kindIn(text: string): { kind?: OperationKind; excerpt?: string } {
-  const match = /(?:^|[^а-яё])(перевод(?:ы|а)?|перев[её]л|перевела|доход(?:ы|а)?|заработал[аи]?|получил[аи]?|зарплата|расход(?:ы|а)?|потратил[аи]?|заплатил[аи]?|купил[аи]?)(?=$|[^а-яё])/iu.exec(text)
+  const match = /(?:^|[^а-яё])(перевод(?:ы|а)?|перев[её]л|перевела|доход(?:ы|а)?|заработал[аи]?|получил[аи]?|зарплата|расход(?:ы|а)?|потратил[аи]?|заплатил[аи]?|оплатил[аи]?|купил[аи]?)(?=$|[^а-яё])/iu.exec(text)
   if (!match) return {}
   return { kind: /^(перев)/iu.test(match[1]!) ? 'transfer' : /^(доход|заработ|получ|зарплат)/iu.test(match[1]!) ? 'income' : 'expense', excerpt: match[1] }
 }

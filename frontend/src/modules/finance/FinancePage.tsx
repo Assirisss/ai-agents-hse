@@ -9,12 +9,14 @@ import Assistant from './Assistant'
 import Market from './Market'
 import Settings from './Settings'
 import Payments from './Payments'
+import { switchWorkspaceProfile, workspaceProfile } from '../../lib/profile'
 import './FinancePage.css'
 
 const tabs = [{ id: 'overview', label: 'Обзор' }, { id: 'drafts', label: 'Черновики и чеки' }, { id: 'assistant', label: 'Помощник' }, { id: 'payments', label: 'Платежи' }, { id: 'market', label: 'Активы' }, { id: 'settings', label: 'Настройки' }] as const
 type Tab = typeof tabs[number]['id']
 
 export default function FinancePage() {
+  const profile = workspaceProfile()
   const [tab, setTab] = useState<Tab>('overview')
   const [data, setData] = useState<FinanceState | null>(null)
   const [stats, setStats] = useState<FinanceStats | null>(null)
@@ -93,7 +95,8 @@ export default function FinancePage() {
   }
 
   return <div className="finance-page">
-    <header className="finance-header"><div><p className="eyebrow">Личный помощник</p><h1 className="screen-title">Финансы и инвестиции</h1><p className="body-2">Учёт денег, проверенные записи и котировки выбранных активов.</p></div><button className="finance-button" disabled={Boolean(busy)} onClick={() => setRevision((value) => value + 1)}>Обновить данные</button></header>
+    <header className="finance-header"><div><p className="eyebrow">Личный помощник</p><h1 className="screen-title">Финансы и инвестиции</h1><p className="body-2">Учёт денег, проверенные записи и котировки выбранных активов.</p></div><div className="finance-profile-actions"><label>Профиль финансов<select value={profile} disabled={Boolean(busy)} onChange={(event) => switchWorkspaceProfile(event.target.value === 'demo' ? 'demo' : 'default')}><option value="default">Личный</option><option value="demo">Демонстрационный</option></select></label><button className="finance-button" disabled={Boolean(busy)} onClick={() => setRevision((value) => value + 1)}>Обновить данные</button></div></header>
+    {profile === 'demo' ? <p className="finance-demo-banner" role="status">Демонстрационный профиль: вымышленные записи и отдельный календарь. Можно менять данные и подтверждать операции. Сохранённые отчёты рассчитаны заранее; новый запрос помощнику использует текущую модель.</p> : null}
     <nav className="finance-tabs" aria-label="Разделы финансов">{tabs.map((item) => <button key={item.id} aria-current={tab === item.id ? 'page' : undefined} onClick={() => setTab(item.id)}>{item.label}{item.id === 'drafts' && pending ? <span className="finance-tab-count">{pending}</span> : null}</button>)}</nav>
     <div className="finance-feedback" aria-live="polite">{busy ? <p className="finance-loading" role="status"><span className="finance-loading-dot" />{busy}…</p> : null}{notice ? <p className="finance-notice" role="status">{notice}</p> : null}{error ? <p className="finance-error" role="alert">{error}</p> : null}{!validDates ? <p className="finance-error" role="alert">Выберите корректный период: начальная дата должна быть не позже конечной.</p> : null}</div>
     {!data && !busy ? <section className="finance-empty"><h2>Финансовый сервис недоступен</h2><p>Запустите backend с настроенным Postgres и примените миграции. После этого обновите данные.</p></section> : null}

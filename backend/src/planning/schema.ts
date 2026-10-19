@@ -46,6 +46,7 @@ export const taskInputSchema = z.object({
   project: z.string().trim().max(80).default(''),
   due: dateOrInstant.nullable().default(null),
   dueHasTime: z.boolean().optional(),
+  timeZone: timeZoneSchema.optional(),
   durationMinutes: z.number().int().min(5).max(1440).nullable().default(null),
   priority: z.union([z.literal(1), z.literal(2), z.literal(3)]).default(2),
   status: z.enum(['open', 'done']).default('open'),
@@ -58,6 +59,7 @@ export const taskInputSchema = z.object({
 export const taskPatchSchema = z.object({
   title: z.string().trim().min(1).max(200), notes: z.string().max(4000), project: z.string().trim().max(80),
   due: dateOrInstant.nullable(), durationMinutes: z.number().int().min(5).max(1440).nullable(),
+  timeZone: timeZoneSchema,
   priority: z.union([z.literal(1), z.literal(2), z.literal(3)]), status: z.enum(['open', 'done']), reminderMinutes: reminder,
   rrule: rruleSchema.nullable(),
 }).partial().strict()

@@ -143,7 +143,7 @@ export class PlanningService {
     const patch = taskPatchSchema.parse(input)
     if (patch.status === 'done' && current.status === 'open') return this.completeTask(profileId, id).task
     const merged = { ...current, ...patch }
-    const value = taskInputSchema.parse({ title: merged.title, notes: merged.notes, project: merged.project, due: merged.due, durationMinutes: merged.durationMinutes, priority: merged.priority, status: merged.status, reminderMinutes: merged.reminderMinutes, rrule: merged.rrule })
+    const value = taskInputSchema.parse({ title: merged.title, notes: merged.notes, project: merged.project, due: merged.due, timeZone: merged.timeZone, durationMinutes: merged.durationMinutes, priority: merged.priority, status: merged.status, reminderMinutes: merged.reminderMinutes, rrule: merged.rrule })
     return this.store.saveTask(profileId, { ...current, ...value, completedAt: value.status === 'done' ? current.completedAt || this.clock().toISOString() : null, updatedAt: this.clock().toISOString() })
   }
   /** A repeating obligation creates its next instance with the next deadline. */
@@ -154,7 +154,7 @@ export class PlanningService {
     const task = this.store.saveTask(profileId, { ...current, status: 'done', completedAt: at, updatedAt: at })
     let next: PlanningTask | null = null
     if (current.rrule && current.due) {
-      const due = nextOccurrence(current.rrule, current.due, this.store.settings(profileId).timeZone)
+      const due = nextOccurrence(current.rrule, current.due, current.timeZone || this.store.settings(profileId).timeZone)
       if (due) next = this.store.saveTask(profileId, { ...current, id: randomUUID(), due, status: 'open', completedAt: null, createdAt: at, updatedAt: at })
     }
     return { task, next }

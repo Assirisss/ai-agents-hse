@@ -39,6 +39,11 @@ export class FinanceWorker {
         let summary: MarketSummary
         try { summary = await this.port.summary(profile.profileId) }
         catch { await this.port.finishDelivery(profile.profileId, delivery.id, 'failed', 'Не удалось подготовить сводку'); continue }
+        const latest = (await this.port.profiles()).find(item => item.profileId === profile.profileId)
+        if (!latest || latest.chatId !== profile.chatId || !latest.watchlist.length) {
+          await this.port.finishDelivery(profile.profileId, delivery.id, 'failed', 'Telegram отключён, привязка изменилась или список наблюдения очищен')
+          continue
+        }
         try { await this.send(profile.chatId, summary.text) }
         catch (error) {
           const uncertain = !(error instanceof TelegramApiError) || error.ambiguous

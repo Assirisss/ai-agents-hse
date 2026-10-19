@@ -1,6 +1,8 @@
 .finance-page { padding-bottom: 40px; }
 .finance-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; }
-.finance-header > .finance-button { flex-shrink: 0; margin-top: 26px; }
+.finance-profile-actions { display: flex; align-items: flex-end; flex-wrap: wrap; gap: 12px; }
+.finance-profile-actions > label { min-width: 170px; }
+.finance-demo-banner { padding: 12px 15px; margin-top: 18px; border: 1px solid var(--outline); border-radius: var(--r-control); background: var(--elevated); color: var(--label-2); font-size: 13px; line-height: 1.6; }
 .finance-page h2 { font-size: 20px; font-weight: 600; letter-spacing: -.02em; }
 .finance-page h3 { font-size: 16px; font-weight: 600; }
 .finance-tabs { display: flex; gap: 5px; margin: 28px 0 20px; padding-bottom: 10px; border-bottom: 1px solid var(--separator); overflow-x: auto; }

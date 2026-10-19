@@ -106,6 +106,7 @@ export class PaymentService {
       title: `Оплатить: ${input.title}`, project: 'Платежи',
       notes: `${marker(id)}\nФинансовое напоминание. Выполнение задачи не записывает расход. Подтвердите фактический платёж в разделе «Финансы».${skipsShortMonths ? '\nПовторение по числу месяца: месяцы без указанного дня пропускаются.' : ''}`,
       due: atLocalTime(input.dueDate, input.time, timeZone).toISOString(),
+      timeZone,
       reminderMinutes: 0, rrule: input.rrule,
     })
   }
@@ -131,6 +132,8 @@ export class PaymentService {
           ...this.taskInput(payment, id), id: `fin-payment:${id}`, completedAt: null, source: 'manual', createdAt: at, updatedAt: at,
         })
       }
+      // Pin older financial tasks as well; profile timezone changes must not shift Moscow payments.
+      if (task.timeZone !== timeZone) task = this.planning.store.saveTask(profileId, { ...task, timeZone, updatedAt: this.now().toISOString() })
       const active = await this.store.transact(profileId, (data) => {
         const current = data.payments.find((item) => item.id === id)
         if (!current || current.status !== 'active') return false

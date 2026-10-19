@@ -2,12 +2,14 @@ import type {
   Agenda, AssistantReply, AssistantTurn, CalendarAccount, DayBrief, DraftConfirmation, DraftItem, EventInput, GoogleConfig, PlanningCapabilities, PlanningDraft,
   PlanningEvent, PlanningSettings, PlanningTask, SyncReport, TaskInput, TelegramLink, TelegramStatus,
 } from '../../../../shared/planning'
+import { workspaceProfile } from '../../lib/profile'
 
 const base = '/api/planning'
 
 async function request<T>(path: string, init: RequestInit & { json?: unknown } = {}): Promise<T> {
   const { json, ...rest } = init
-  const response = await fetch(`${base}${path}`, {
+  const profileQuery = workspaceProfile() === 'demo' ? `${path.includes('?') ? '&' : '?'}profileId=demo` : ''
+  const response = await fetch(`${base}${path}${profileQuery}`, {
     ...rest,
     ...(json !== undefined || (rest.method && rest.method !== 'GET' && rest.method !== 'DELETE') ? { headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(json ?? {}) } : {}),
   })

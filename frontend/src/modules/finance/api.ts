@@ -1,7 +1,8 @@
 import type { AgentReply, AuditEntry, Draft, DraftInput, FinanceState, FinanceStats, Instrument, MarketSummary, Operation, Receipt } from '../../../../shared/finance'
+import { workspaceProfile } from '../../lib/profile'
 
 export function financeUrl(path: string) {
-  return `/api/finance${path}${path.includes('?') ? '&' : '?'}profileId=default`
+  return `/api/finance${path}${path.includes('?') ? '&' : '?'}profileId=${workspaceProfile()}`
 }
 
 export async function financeRequest<T>(path: string, signal: AbortSignal, method = 'GET', body?: unknown): Promise<T> {

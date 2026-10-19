@@ -64,7 +64,7 @@ export function createApp(service = new TrendResearchService(), options: AppOpti
     if (error instanceof ResearchError || error instanceof PlanningError || error instanceof FinanceError) return reply.code(error.statusCode).send({ error: error.message })
     if (error instanceof PhotoProcessingError || error instanceof WardrobeAgentError) return reply.code(error.statusCode).send({ error: error.message })
     const status = typeof error === 'object' && error && 'statusCode' in error ? Number(error.statusCode) : 500
-    return reply.code(status >= 400 && status < 500 ? status : 500).send({ error: status === 413 ? 'Слишком большой запрос' : status === 400 ? 'Некорректный JSON' : status === 415 ? 'Ожидается application/json' : (request.url.startsWith('/api/planning') ? 'Ошибка раздела «Дела и календарь»' : 'Ошибка службы исследований') })
+    return reply.code(status >= 400 && status < 500 ? status : 500).send({ error: status === 413 ? 'Слишком большой запрос' : status === 400 ? 'Некорректный JSON' : status === 415 ? 'Ожидается application/json' : (request.url.startsWith('/api/planning') ? 'Ошибка раздела «Дела и календарь»' : request.url.startsWith('/api/finance') ? 'Ошибка финансового сервиса' : 'Ошибка службы исследований') })
   })
   return app
 }

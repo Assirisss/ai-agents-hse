@@ -7,6 +7,7 @@ import { draftSchema, operationSchema, FinanceError, moscowToday, dateSchema, pr
 import type { FinanceStore } from './store.js'
 import { decimalRubles } from './money.js'
 import { analyzeFinance, analysisRequestSchema } from './analysis.js'
+import { FinanceModelError } from './models.js'
 
 export type FinanceMarket = { search(query: string): Promise<Instrument[]>; summary(watchlist: Instrument[], previousQuotes?: Quote[]): Promise<MarketSummary> }
 export type FinanceModels = { text: boolean; vision: boolean; run(profileId: string, text: string): Promise<import('../../../shared/finance.js').AgentReply>; recognize(bytes: Buffer, mime: string): Promise<DraftInput> }
@@ -179,7 +180,11 @@ export class FinanceService {
   async recognize(profileId:string,id:string) {
     if(!this.models?.vision) throw new FinanceError('Модель распознавания чеков не настроена. Можно заполнить черновик вручную.',503)
     const {receipt,bytes}=await this.receiptImage(profileId,id)
-    const input=await this.models.recognize(bytes,receipt.mime)
+    let input: DraftInput
+    try { input=await this.models.recognize(bytes,receipt.mime) }
+    catch (error) {
+      throw new FinanceError(error instanceof FinanceModelError ? error.message : 'Не удалось распознать чек. Повторите попытку или заполните чек вручную.', error instanceof FinanceModelError ? error.statusCode : 502)
+    }
     return this.createDraft(profileId,{...input,kind:'expense',receiptId:id,warnings:[...(input.warnings||[]),...(receipt.duplicate?['Это изображение уже загружалось. Проверьте дубликат.']:[])]},'receipt')
   }
   async agent(profileId:string,text:string) { this.checkProfile(profileId); if(this.chatRunner) return this.chatRunner(profileId,text); if(!this.models?.text) throw new FinanceError('Текстовая модель не настроена. Используйте ручную форму.',503); return this.models.run(profileId,z.string().trim().min(1).max(4000).parse(text)) }

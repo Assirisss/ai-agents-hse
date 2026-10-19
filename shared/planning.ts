@@ -59,6 +59,8 @@ export type PlanningTask = {
   /** Date `2026-10-25` or UTC instant when `dueHasTime`. */
   due: string | null
   dueHasTime: boolean
+  /** Optional fixed recurrence zone; older tasks use the profile's current zone. */
+  timeZone?: string
   durationMinutes: number | null
   priority: TaskPriority
   status: 'open' | 'done'
@@ -78,6 +80,7 @@ export type TaskInput = {
   project?: string
   due?: string | null
   dueHasTime?: boolean
+  timeZone?: string
   durationMinutes?: number | null
   priority?: TaskPriority
   status?: 'open' | 'done'

@@ -4,8 +4,9 @@ import { createConversation, FinanceChatError, listConversations, loadConversati
 import DraftProvenance from './DraftProvenance'
 import AnalysisReply from './AnalysisReply'
 import type { FinanceAction } from './types'
+import { workspaceProfile } from '../../lib/profile'
 
-const storageKey = 'graphite-finance-conversation-v1'
+const storageKey = `graphite-finance-conversation-v1${workspaceProfile() === 'demo' ? ':demo' : ''}`
 const remember = (id: string | null) => { try { if (id) localStorage.setItem(storageKey, id); else localStorage.removeItem(storageKey) } catch { /* History is stored by the backend. */ } }
 const storedId = () => { try { return localStorage.getItem(storageKey) } catch { return null } }
 const methodLabels = { rules: 'Обычные инструменты', model: 'С участием модели', mixed: 'Правила и модель' }
