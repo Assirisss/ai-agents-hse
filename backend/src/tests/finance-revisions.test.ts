@@ -7,6 +7,63 @@ import { FinanceTelegramBot, TelegramClient, type FinanceTelegramPort } from '..
 
 const input = { kind: 'expense' as const, amount: 85_000, date: '2026-10-19', accountId: 'cash', categoryId: 'food', description: 'Обед' }
 
+test('HTTP operation edits reject an old window without changing money, category or audit', async () => {
+  const finance = new FinanceService(new MemoryFinanceStore())
+  const draft = await finance.createDraft('review', input)
+  const operation = await finance.confirmDraft('review', draft.id)
+  assert.equal(operation.revision, 0)
+  const app = createApp(undefined, { finance })
+  const url = `/api/finance/operations/${operation.id}?profileId=review`
+  const save = (payload: object) => app.inject({ method: 'PATCH', url, payload })
+  try {
+    for (const invalid of [{ ...input }, { ...input, expectedRevision: -1 }, { ...input, expectedRevision: 0.5 }]) {
+      assert.equal((await save(invalid)).statusCode, 400)
+    }
+    const first = await save({ ...input, amount: 850_000, expectedRevision: 0 })
+    assert.equal(first.statusCode, 200)
+    assert.equal(first.json().revision, 1)
+    const auditBeforeConflict = await finance.history('review', operation.id)
+    const stale = await save({ ...input, categoryId: 'other-expense', expectedRevision: 0 })
+    assert.equal(stale.statusCode, 409)
+    assert.match(stale.json().error, /Обновите данные/)
+    const current = await finance.state('review')
+    assert.equal(current.operations[0]!.amount, 850_000)
+    assert.equal(current.operations[0]!.categoryId, 'food')
+    assert.equal(current.operations[0]!.revision, 1)
+    assert.equal(current.accounts[0]!.balance, -850_000)
+    assert.deepEqual(await finance.history('review', operation.id), auditBeforeConflict)
+    const refreshed = await save({ ...input, amount: 850_000, categoryId: 'other-expense', expectedRevision: 1 })
+    assert.equal(refreshed.statusCode, 200)
+    assert.equal(refreshed.json().revision, 2)
+    assert.equal((await finance.state('review')).accounts[0]!.balance, -850_000)
+    const audit = await finance.history('review', operation.id)
+    assert.equal(audit.length, 3)
+    assert.ok(audit.some(item => item.action === 'operation.updated' && (item.after as { revision?: number }).revision === 2))
+  } finally { await app.close() }
+})
+
+test('legacy operation version zero permits only one of two competing edits; cancellation still blocks edits', async () => {
+  const store = new MemoryFinanceStore(), finance = new FinanceService(store)
+  const draft = await finance.createDraft('review', input)
+  const operation = await finance.confirmDraft('review', draft.id)
+  await store.transact('review', data => { delete data.operations[0]!.revision })
+  const saves = await Promise.allSettled([
+    finance.updateOperation('review', operation.id, { ...input, amount: 100_000 }, 0),
+    finance.updateOperation('review', operation.id, { ...input, amount: 200_000 }, 0),
+  ])
+  const successful = saves.filter(item => item.status === 'fulfilled')
+  assert.equal(successful.length, 1)
+  const rejected = saves.find(item => item.status === 'rejected') as PromiseRejectedResult
+  assert.equal(rejected.reason.statusCode, 409)
+  const current = (await finance.state('review')).operations[0]!
+  assert.equal(current.revision, 1)
+  assert.equal((await finance.state('review')).accounts[0]!.balance, -current.amount)
+  assert.equal((await finance.history('review', operation.id)).length, 2)
+  await finance.cancelOperation('review', operation.id)
+  await assert.rejects(() => finance.updateOperation('review', operation.id, input, 1), { statusCode: 409 })
+  assert.equal((await finance.state('review')).accounts[0]!.balance, 0)
+})
+
 test('HTTP draft writes require the displayed revision; stale saves and confirmations cannot change money', async () => {
   const finance = new FinanceService(new MemoryFinanceStore())
   const draft = await finance.createDraft('review', input)

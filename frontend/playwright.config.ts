@@ -4,6 +4,7 @@ const baseURL = 'http://127.0.0.1:5178'
 
 export default defineConfig({
   testDir: './tests',
+  testMatch: 'finance-*.spec.ts',
   workers: 1,
   use: {
     baseURL,

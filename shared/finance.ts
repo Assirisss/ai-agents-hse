@@ -4,7 +4,8 @@ export type Account = { id: string; name: string; currency: 'RUB'; initialBalanc
 export type Category = { id: string; name: string; kind: 'income' | 'expense' }
 export type ReceiptItem = { name: string; quantity: number | null; total: number | null }
 export type OperationInput = { kind: OperationKind; amount: number; date: string; accountId: string; destinationAccountId?: string | null; categoryId?: string | null; description: string }
-export type Operation = OperationInput & { id: string; status: 'posted' | 'cancelled'; createdAt: string; updatedAt: string; receiptId?: string | null }
+/** Legacy stored operations without revision are version 0. */
+export type Operation = OperationInput & { id: string; revision?: number; status: 'posted' | 'cancelled'; createdAt: string; updatedAt: string; receiptId?: string | null }
 export type DraftInput = { kind?: OperationKind | null; amount?: number | null; date?: string | null; accountId?: string | null; destinationAccountId?: string | null; categoryId?: string | null; description?: string; receiptId?: string | null; items?: ReceiptItem[]; warnings?: string[]; provenance?: Partial<Record<DraftField, FieldProvenance>> }
 /** Legacy stored drafts without revision are version 0. */
 export type Draft = DraftInput & { id: string; revision?: number; status: 'pending' | 'confirmed' | 'cancelled'; source: 'form' | 'text' | 'receipt'; createdAt: string; operationId?: string | null; missing: string[]; warnings: string[] }

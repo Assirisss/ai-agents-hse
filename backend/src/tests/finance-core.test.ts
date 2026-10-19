@@ -37,7 +37,7 @@ void test('transfers are atomic and excluded from income/expense, period compari
   assert.equal((await service.stats('alice',input.date,input.date)).expense,0)
   const previous=await service.createDraft('alice',{...input,date:'2026-10-17',amount:5000});await service.confirmDraft('alice',previous.id)
   const draft=await service.createDraft('alice',input);const operation=await service.confirmDraft('alice',draft.id)
-  await service.updateOperation('alice',operation.id,{...input,amount:8000})
+  await service.updateOperation('alice',operation.id,{...input,amount:8000},operation.revision ?? 0)
   const stats=await service.stats('alice',input.date,input.date)
   assert.equal(stats.expense,8000);assert.equal(stats.previousExpense,5000)
   assert.equal(stats.expenseByCategory[0]!.amount,8000)
@@ -73,7 +73,7 @@ void test('receipt routes protect profile, file types and enforce recognition as
     const duplicate=await finance.uploadReceipt('alice','receipt.png','image/png',png);assert.equal(duplicate.duplicate,true)
     const draft=await finance.updateDraft('alice',recognized.json().id,{accountId:'cash',categoryId:'food'})
     const operation=await finance.confirmDraft('alice',draft.id);assert.equal(operation.receiptId,id)
-    await finance.updateOperation('alice',operation.id,{...input,amount:10000});assert.equal((await finance.state('alice')).operations[0]!.receiptId,id)
+    await finance.updateOperation('alice',operation.id,{...input,amount:10000},operation.revision ?? 0);assert.equal((await finance.state('alice')).operations[0]!.receiptId,id)
   } finally {await app.close();await rm(directory,{recursive:true,force:true})}
 })
 void test('receipt and wardrobe photo routes coexist with independent image size limits',async()=>{
@@ -172,6 +172,16 @@ void test('Postgres migrations, rollback, restart, isolation and concurrent conf
       assert.equal(current.revision,1)
       const posted = await another.confirmDraft(profile,editable.id,current.revision)
       assert.equal(posted.amount,current.amount)
+      const edits = await Promise.allSettled([
+        service.updateOperation(profile,posted.id,{...input,amount:30000},0),
+        another.updateOperation(profile,posted.id,{...input,amount:40000},0),
+      ])
+      assert.equal(edits.filter(item=>item.status==='fulfilled').length,1)
+      assert.equal((edits.find(item=>item.status==='rejected') as PromiseRejectedResult).reason.statusCode,409)
+      const persisted = (await another.state(profile)).operations.find(item=>item.id===posted.id)!
+      assert.equal(persisted.revision,1)
+      assert.equal(persisted.amount,(edits.find(item=>item.status==='fulfilled') as PromiseFulfilledResult<typeof posted>).value.amount)
+      assert.equal((await another.history(profile,posted.id)).length,2)
     } finally {await second.close()}
   } finally {await store.close()}
 })

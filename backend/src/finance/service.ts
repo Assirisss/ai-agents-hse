@@ -123,7 +123,7 @@ export class FinanceService {
       const input = operationSchema.parse({ kind: draft.kind, amount: draft.amount, date: draft.date, accountId: draft.accountId, destinationAccountId: draft.destinationAccountId, categoryId: draft.categoryId, description: draft.description || '' })
       if (input.kind === 'transfer') input.categoryId = null
       else input.destinationAccountId = null
-      const operation: Operation = { ...input, id: randomUUID(), status: 'posted', receiptId: draft.receiptId, createdAt: this.now().toISOString(), updatedAt: this.now().toISOString() }
+      const operation: Operation = { ...input, id: randomUUID(), revision: 0, status: 'posted', receiptId: draft.receiptId, createdAt: this.now().toISOString(), updatedAt: this.now().toISOString() }
       data.operations.push(operation); this.balances(data)
       draft.status = 'confirmed'; draft.operationId = operation.id
       if (data.telegramPendingDraftId === id) data.telegramPendingDraftId = null
@@ -133,15 +133,17 @@ export class FinanceService {
   async cancelDraft(profileId: string, id: string) {
     return this.transaction(profileId,(data) => { const draft = data.drafts.find((item) => item.id === id); if (!draft) throw new FinanceError('Черновик не найден',404); if (draft.status === 'confirmed') throw new FinanceError('Операция уже подтверждена',409); draft.status='cancelled'; if (data.telegramPendingDraftId===id) data.telegramPendingDraftId=null; return { cancelled: true } })
   }
-  async updateOperation(profileId: string, id: string, raw: unknown) {
+  async updateOperation(profileId: string, id: string, raw: unknown, expectedRevision: number) {
     const input = operationSchema.parse(raw)
+    const revision = z.number().int().safe().nonnegative().parse(expectedRevision)
     return this.transaction(profileId,(data) => {
       const operation = data.operations.find((item) => item.id===id)
       if (!operation) throw new FinanceError('Операция не найдена',404)
       if (operation.status !== 'posted') throw new FinanceError('Операция отменена',409)
+      if ((operation.revision ?? 0) !== revision) throw new FinanceError('Операция изменена в другом окне. Обновите данные и проверьте актуальные поля перед сохранением.',409)
       const missing = this.missing(data,input); if (missing.length) throw new FinanceError(`Заполните: ${missing.join(', ')}`)
       const before=structuredClone(operation)
-      Object.assign(operation,input,{ categoryId: input.kind==='transfer' ? null : input.categoryId, destinationAccountId: input.kind==='transfer' ? input.destinationAccountId : null, updatedAt: this.now().toISOString() })
+      Object.assign(operation,input,{ categoryId: input.kind==='transfer' ? null : input.categoryId, destinationAccountId: input.kind==='transfer' ? input.destinationAccountId : null, revision: revision + 1, updatedAt: this.now().toISOString() })
       this.balances(data); this.audit(data,id,'operation.updated',before,operation); return operation
     })
   }

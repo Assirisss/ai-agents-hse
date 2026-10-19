@@ -20,6 +20,7 @@ export const getFinanceStats = (from: string, to: string, signal: AbortSignal) =
 export const createDraft = (input: DraftInput, signal: AbortSignal) => financeRequest<Draft>('/drafts', signal, 'POST', input)
 export const saveDraft = (id: string, input: DraftInput, expectedRevision: number, signal: AbortSignal) => financeRequest<Draft>(`/drafts/${encodeURIComponent(id)}`, signal, 'PATCH', { ...input, expectedRevision })
 export const confirmDraft = (id: string, expectedRevision: number, signal: AbortSignal) => financeRequest<Operation>(`/drafts/${encodeURIComponent(id)}/confirm`, signal, 'POST', { expectedRevision })
+export const updateOperation = (id: string, input: DraftInput, expectedRevision: number, signal: AbortSignal) => financeRequest<Operation>(`/operations/${encodeURIComponent(id)}`, signal, 'PATCH', { ...input, expectedRevision })
 export const askFinanceAgent = (text: string, signal: AbortSignal) => financeRequest<AgentReply>('/agent', signal, 'POST', { text })
 export const getAudit = (id: string, signal: AbortSignal) => financeRequest<AuditEntry[]>(`/operations/${encodeURIComponent(id)}/audit`, signal)
 export const searchInstruments = (query: string, signal: AbortSignal) => financeRequest<Instrument[]>(`/instruments?query=${encodeURIComponent(query)}`, signal)

@@ -14,7 +14,7 @@ type Props = {
 
 export default function EntryEditor({ accounts, categories, initial, mode, disabled, onSave, onCancel }: Props) {
   const incoming = editorValues(initial, mode, accounts)
-  const sourceKey = JSON.stringify([initial?.id, initial && 'revision' in initial ? initial.revision ?? 0 : 0, incoming])
+  const sourceKey = JSON.stringify([initial?.id, initial?.revision ?? 0, incoming])
   const [values, setValues] = useState(incoming)
   const [baseline, setBaseline] = useState({ key: sourceKey, values: incoming })
   const [error, setError] = useState('')

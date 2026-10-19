@@ -4,7 +4,7 @@ import { FinanceChatService, financeChatRequestSchema } from './chat.js'
 import type { PaymentService } from './payments.js'
 import type { FinanceChatEvent } from '../../../shared/finance.js'
 import { z } from 'zod'
-import { draftSchema, FinanceError, moscowToday, profileSchema } from './schema.js'
+import { draftSchema, operationSchema, FinanceError, moscowToday, profileSchema } from './schema.js'
 import type { FinanceService } from './service.js'
 
 export function registerFinanceRoutes(app: FastifyInstance, finance?: FinanceService, financeChat?: FinanceChatService, payments?: PaymentService) {
@@ -55,7 +55,10 @@ export function registerFinanceRoutes(app: FastifyInstance, finance?: FinanceSer
     return service().confirmDraft(profile(req.query),params(req.params),input.expectedRevision)
   })
   app.post('/api/finance/drafts/:id/cancel',async(req)=>service().cancelDraft(profile(req.query),params(req.params)))
-  app.patch('/api/finance/operations/:id',async(req)=>service().updateOperation(profile(req.query),params(req.params),req.body))
+  app.patch('/api/finance/operations/:id',async(req)=>{
+    const {expectedRevision: revision, ...input}=operationSchema.extend({expectedRevision}).parse(req.body)
+    return service().updateOperation(profile(req.query),params(req.params),input,revision)
+  })
   app.post('/api/finance/operations/:id/cancel',async(req)=>service().cancelOperation(profile(req.query),params(req.params)))
   app.get('/api/finance/operations/:id/audit',async(req)=>service().history(profile(req.query),params(req.params)))
   app.post('/api/finance/agent', {bodyLimit:16384},async(req)=>service().agent(profile(req.query),z.object({text:z.string()}).strict().parse(req.body).text))

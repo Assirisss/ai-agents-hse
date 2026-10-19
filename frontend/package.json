@@ -7,7 +7,7 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "oxlint",
-    "test:finance-ui": "playwright test tests/finance-drafts.spec.ts",
+    "test:finance-ui": "playwright test",
     "preview": "vite preview"
   },
   "dependencies": {
