@@ -6,6 +6,7 @@ import type { Account, AuditEntry, Delivery, Draft, DraftInput, DraftField, Fiel
 import { draftSchema, operationSchema, FinanceError, moscowToday, dateSchema, profileSchema } from './schema.js'
 import type { FinanceStore } from './store.js'
 import { decimalRubles } from './money.js'
+import { analyzeFinance, analysisRequestSchema } from './analysis.js'
 
 export type FinanceMarket = { search(query: string): Promise<Instrument[]>; summary(watchlist: Instrument[], previousQuotes?: Quote[]): Promise<MarketSummary> }
 export type FinanceModels = { text: boolean; vision: boolean; run(profileId: string, text: string): Promise<import('../../../shared/finance.js').AgentReply>; recognize(bytes: Buffer, mime: string): Promise<DraftInput> }
@@ -149,6 +150,7 @@ export class FinanceService {
   }
   async cancelOperation(profileId: string,id: string) { return this.transaction(profileId,(data) => { const item=data.operations.find((item)=>item.id===id); if(!item) throw new FinanceError('Операция не найдена',404); if(item.status==='posted') { const before={...item}; item.status='cancelled'; this.balances(data); item.updatedAt=this.now().toISOString(); this.audit(data,id,'operation.cancelled',before,item) } return item }) }
   async history(profileId: string,id:string): Promise<AuditEntry[]> { const data=await this.store.read(this.checkProfile(profileId)); return data.audit.filter((item)=>item.entityId===id).sort((a,b)=>b.createdAt.localeCompare(a.createdAt)) }
+  async analyze(profileId: string, raw: unknown) { return analyzeFinance(await this.store.read(this.checkProfile(profileId)), analysisRequestSchema.parse(raw), this.now()) }
   async stats(profileId: string, from: string, to: string): Promise<FinanceStats> {
     dateSchema.parse(from); dateSchema.parse(to); if(from>to) throw new FinanceError('Начало периода позже окончания')
     const day=86400000; const length=(Date.parse(to)-Date.parse(from))/day+1

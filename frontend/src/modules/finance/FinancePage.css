@@ -188,3 +188,8 @@
   .finance-provenance dl > div { grid-template-columns: minmax(80px, 1fr) minmax(0, 2fr); gap: 10px; }
 }
 @media (max-width: 420px) { .finance-fields { grid-template-columns: 1fr; } .finance-tabs { margin-left: -5px; margin-right: -5px; } .finance-account-setting > form { flex-wrap: wrap; } }
+
+.finance-page .finance-analysis-statement { margin-block: 14px; }
+.finance-page .finance-analysis-statement .finance-actions { gap: 6px; }
+.finance-page .finance-analysis h4 { margin-block: 20px 8px; }
+.finance-page .finance-analysis .finance-button { white-space: normal; text-align: left; }

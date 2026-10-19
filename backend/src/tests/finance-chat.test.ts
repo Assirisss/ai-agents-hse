@@ -99,6 +99,10 @@ void test('Postgres conversations replay and revision are durable across connect
   const recreated=new FinanceChatService(new FinanceService(second),undefined,clock),replay=await recreated.send(profile,conversation.id,input)
   assert.equal(replay.messageId,result.messageId);assert.equal(replay.replayed,true)
   assert.equal((await second.read(profile)).drafts.length,1)
+  const analysis=await recreated.send(profile,conversation.id,request('Почему выросли расходы?',1))
+  assert.ok(analysis.conversation.messages.at(-1)!.reply!.analysis)
+  const persisted=await new FinanceChatService(new FinanceService(first),undefined,clock).get(profile,conversation.id)
+  assert.deepEqual(persisted.messages.at(-1)!.reply!.analysis,analysis.conversation.messages.at(-1)!.reply!.analysis)
  }finally{await first.close();await second.close()}
 })
 void test('Telegram rotates a full conversation while retaining replay of older updates',async()=>{

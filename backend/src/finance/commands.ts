@@ -2,6 +2,7 @@ import type { Account, AgentReply, Category, Draft, DraftField, DraftInput, Fiel
 import type { AgentFinancePort } from './tools.js'
 import { moscowDate } from './agent.js'
 import { formatMoney, sumKopecks } from './money.js'
+import { analysisIntent } from './analysis-intent.js'
 
 const fields: Record<string, string> = { kind: 'тип операции', amount: 'сумму', date: 'дату', accountId: 'счёт', destinationAccountId: 'счёт получателя', categoryId: 'категорию' }
 const HELP = 'Команды без модели:\n/expense 850 продукты; счёт Наличные; дата сегодня\n/income 10000 зарплата; счёт Карта\n/transfer 500; со счёта Карта; на счёт Наличные\n/accounts — счета\n/categories — категории\n/drafts — черновики\n/balance — остатки\n/expenses — расходы за месяц\n/period прошлый месяц — доходы и расходы\n\nКоманды добавления используют сегодняшнюю дату, если дата не указана. Свободный текст требует уточнения даты и счёта. Запись сохраняется только кнопкой «Подтвердить».'
@@ -92,6 +93,7 @@ export async function runFinanceCommands(port: AgentFinancePort, raw: string, co
   const name = command?.[1]?.toLowerCase(), args = command?.[2]?.trim() || ''
   if (name === 'help' || name === 'finance' && !args) return reply(HELP)
   if (name === 'finance') return runFinanceCommands(port, args, context)
+  if (analysisIntent(text)) return null
   if (name === 'accounts') return { ...reply((await port.accounts()).filter(item => !item.archived).map(item => `${item.name}: ${formatMoney(item.balance)}`).join('\n') || 'Счета пока не добавлены. Создайте счёт на сайте.'), steps: [{ tool: 'finance_accounts', status: 'ok' }] }
   if (name === 'categories') return { ...reply((await port.categories()).map(item => `${item.name} — ${item.kind === 'income' ? 'доход' : 'расход'}`).join('\n') || 'Категории пока не добавлены.'), steps: [{ tool: 'finance_categories', status: 'ok' }] }
   if (name === 'drafts') {

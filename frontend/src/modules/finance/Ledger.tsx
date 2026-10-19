@@ -20,7 +20,7 @@ export default function Ledger({ data, stats, from, to, setFrom, setTo, busy, ru
   const editingOperation = data.operations.find((item) => item.id === editingId)
   const accounts = new Map(data.accounts.map((item) => [item.id, item.name]))
   const categories = new Map(data.categories.map((item) => [item.id, item.name]))
-  const operations = data.operations.filter((item) => item.date >= from && item.date <= to && ((showCancelled && !evidence) || item.status === 'posted') && (kind === 'all' || item.kind === kind) && (account === 'all' || item.accountId === account || item.destinationAccountId === account) && (category === 'all' || item.categoryId === category) && (!filter.query || item.description.toLocaleLowerCase('ru-RU').includes(filter.query.toLocaleLowerCase('ru-RU')))).sort((a, b) => b.date.localeCompare(a.date) || b.createdAt.localeCompare(a.createdAt))
+  const operations = data.operations.filter((item) => (!filter.operationIds || filter.operationIds.includes(item.id)) && item.date >= from && item.date <= to && ((showCancelled && !evidence) || item.status === 'posted') && (kind === 'all' || item.kind === kind) && (account === 'all' || item.accountId === account || item.destinationAccountId === account) && (category === 'all' || item.categoryId === category) && (!filter.query || item.description.toLocaleLowerCase('ru-RU').includes(filter.query.toLocaleLowerCase('ru-RU')))).sort((a, b) => b.date.localeCompare(a.date) || b.createdAt.localeCompare(a.createdAt))
   const maxExpense = Math.max(1, ...(stats?.expenseByCategory.map((item) => item.amount) ?? []))
 
   function saveOperation(id: string, input: DraftInput, expectedRevision: number) {

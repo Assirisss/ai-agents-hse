@@ -40,6 +40,7 @@ export function registerFinanceRoutes(app: FastifyInstance, finance?: FinanceSer
   app.post('/api/finance/payments/:id/draft', async req => paymentService().draft(profile(req.query),params(req.params)))
 
   app.get('/api/finance/state',async(req)=>service().state(profile(req.query)))
+  app.post('/api/finance/analysis', {bodyLimit:16384}, async(req)=>service().analyze(profile(req.query),req.body))
   app.get('/api/finance/stats',async(req)=>{const args=z.object({from:z.string().default(`${moscowToday().slice(0,7)}-01`),to:z.string().default(moscowToday())}).passthrough().parse(req.query);return service().stats(profile(req.query),args.from,args.to)})
   app.get('/api/finance/context',async(req)=>service().moduleContext(profile(req.query)))
   app.post('/api/finance/accounts',async(req)=>service().createAccount(profile(req.query),req.body))

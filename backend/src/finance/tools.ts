@@ -1,5 +1,6 @@
 import { z } from 'zod'
-import type { Account, Category, Draft, DraftInput, FinanceStats, Operation, OperationKind } from '../../../shared/finance.js'
+import type { Account, Category, Draft, DraftInput, FinanceStats, Operation, OperationKind, FinanceAnalysis, FinanceAnalysisRequest } from '../../../shared/finance.js'
+import { createAnalysisTools } from './analysis-tools.js'
 
 type Awaitable<T> = T | Promise<T>
 export type OperationFilters = { from?: string; to?: string; kind?: OperationKind; accountId?: string; categoryId?: string; query?: string }
@@ -10,6 +11,7 @@ export interface AgentFinancePort {
   drafts?(): Awaitable<Draft[]>
   operations(filters: OperationFilters): Awaitable<Operation[]>
   stats(range: { from: string; to: string }): Awaitable<FinanceStats>
+  analyze?(input: FinanceAnalysisRequest): Awaitable<FinanceAnalysis>
   createDraft(input: DraftInput, source: 'text' | 'receipt'): Awaitable<Draft>
   updateDraft(id: string, input: DraftInput): Awaitable<Draft>
 }
@@ -56,6 +58,7 @@ export function createFinanceTools(port: AgentFinancePort): FinanceTool[] {
     async execute(input) { return execute(schema.parse(input)) },
   })
   return [
+    ...createAnalysisTools(port),
     tool('finance_accounts', 'Счета и точные остатки в целых копейках RUB. Только данные текущего пользователя.', z.object({}).strict(), () => port.accounts()),
     tool('finance_categories', 'Категории текущего пользователя с ID и типом доход/расход.', z.object({}).strict(), () => port.categories()),
     tool('finance_operations', 'Подтверждённые операции текущего пользователя. Суммы в копейках; максимум 100 последних операций.', filtersSchema, async (input) => (await port.operations(input)).sort((left, right) => right.date.localeCompare(left.date) || right.createdAt.localeCompare(left.createdAt)).slice(0, 100)),

@@ -3,6 +3,10 @@ import type { AgentMessage, ResearchPlanner } from '../trends/planner.js'
 import { compactContext } from '../trends/context.js'
 import { createFinanceTools, financeDraftSchema, type AgentFinancePort } from './tools.js'
 import { formatMoney as money } from './money.js'
+import { analysisIntent } from './analysis-intent.js'
+import { runAnalysisAgent } from './analysis-agent.js'
+import { analysisEvidence, renderAnalysis } from './analysis.js'
+import type { FinanceAnalysis } from '../../../shared/finance.js'
 
 const fieldNames: Record<string, string> = { kind: 'тип операции', amount: 'сумму', date: 'дату', accountId: 'счёт', destinationAccountId: 'счёт получателя', categoryId: 'категорию' }
 
@@ -90,6 +94,8 @@ function renderData(tool: string, result: unknown): string | undefined {
 export async function runFinanceAgent(port: AgentFinancePort, text: string, options: { planner?: ResearchPlanner; signal?: AbortSignal; now?: Date; history?: { role: 'user' | 'assistant'; text: string }[]; activeDraft?: Draft; filter?: OperationFilter } = {}): Promise<AgentReply> {
   const inputText = text.trim()
   if (!inputText || inputText.length > 12000) throw new Error('Введите сообщение от 1 до 12000 символов')
+  const intent = analysisIntent(inputText)
+  if (intent) return runAnalysisAgent(port, inputText, { ...options, kind: intent })
   if (!options.planner) return { text: 'Финансовая модель не настроена. Добавьте операцию через ручную форму; учёт и расчёты доступны.', steps: [] }
   const signal = AbortSignal.any([AbortSignal.timeout(60000), ...(options.signal ? [options.signal] : [])])
   const tools = createFinanceTools(port)
@@ -98,6 +104,7 @@ export async function runFinanceAgent(port: AgentFinancePort, text: string, opti
   const steps: AgentReply['steps'] = []
   let draft: Draft | undefined
   let dataReply: string | undefined
+  let analysis: FinanceAnalysis | undefined
   let toolCount = 0
   let stopped = false
   let modelFailed = false
@@ -124,6 +131,10 @@ export async function runFinanceAgent(port: AgentFinancePort, text: string, opti
             args = { ...value, input: await groundedDraft(financeDraftSchema.parse(value.input), inputText, today, port) }
           }
           const output = await untilAborted(tool.execute(args), signal)
+          if (output && typeof output === 'object' && 'facts' in output && 'limitations' in output && 'period' in output) {
+            analysis = output as FinanceAnalysis
+            dataReply = renderAnalysis(analysis)
+          }
           if (call.name === 'finance_create_draft' || call.name === 'finance_update_draft') draft = output as Draft
           dataReply = renderData(call.name, output) || dataReply
           steps.push({ tool: call.name, status: 'ok' })
@@ -139,7 +150,7 @@ export async function runFinanceAgent(port: AgentFinancePort, text: string, opti
     modelFailed = true
   }
   if (draft) return { text: draftReply(draft), draft, steps }
-  if (dataReply) return { text: dataReply + (modelFailed ? '\nМодель недоступна; показаны полученные сервером данные.' : ''), steps }
+  if (dataReply) return { text: dataReply + (modelFailed ? '\nМодель недоступна; показаны полученные сервером данные.' : ''), steps, ...(analysis ? { analysis, evidence: analysisEvidence(analysis) } : {}) }
   if (modelFailed || signal.aborted) return { text: 'Финансовая модель недоступна или истекло время ожидания. Операция не записана. Используйте ручную форму.', steps }
   return { text: 'Уточните задачу. Для операции укажите сумму, дату и счёт; для статистики — период. Операцию нужно подтвердить отдельно.', steps }
 }

@@ -11,6 +11,7 @@ export function financePort(finance: FinanceService, profileId: string): AgentFi
     drafts: async () => (await finance.state(profileId)).drafts.filter(draft => draft.status === 'pending'),
     operations: async filters => filterOperations((await finance.state(profileId)).operations, filters),
     stats: range => finance.stats(profileId, range.from, range.to),
+    analyze: input => finance.analyze(profileId, input),
     createDraft: (input, source) => finance.createDraft(profileId, input, source),
     updateDraft: (id, input) => finance.updateDraft(profileId, id, input),
   }

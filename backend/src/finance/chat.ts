@@ -62,7 +62,7 @@ export class FinanceChatService {
         const update=port.updateDraft
         port.updateDraft=(draftId,input)=>update(draftId,{...input,provenance:this.modelProvenance(input)})
         reply=await runFinanceAgent(port,request.text,{planner:this.planner,signal,now:this.clock(),history:original.messages.map(message=>({role:message.role,text:message.text})),activeDraft,filter:original.filter})
-        reply.method='model'
+        reply.method ||= 'model'
         if(evidenceFilter && !reply.evidence?.length) {
           const operations=await readOperations(evidenceFilter)
           reply.evidence=[{label:'Операции, использованные для ответа',filter:evidenceFilter,operationIds:operations.map(item=>item.id),count:operations.length}]
