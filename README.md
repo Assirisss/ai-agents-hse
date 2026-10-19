@@ -50,9 +50,56 @@
 
 Учёт доходов, расходов и переводов, черновики по тексту и фото чека, статистика, акции MOEX TQBR и фактическая ежедневная сводка Telegram. Данные — Postgres; запись после подтверждения. Текстовая и визуальная модели настраиваются отдельно, расчёты и котировки работают без LLM. Инвестиционных рекомендаций нет. [Инструкция](docs/finance.md).
 
-Для финансов запустите из корня `docker compose up -d postgres`, задайте `DATABASE_URL` в backend `.env` по примеру. Общий бот запускается вместе с backend; нужны токен и привязка через сайт. Для отправки ежедневной сводки в 21:00 Москвы отдельно запустите `npm run finance:worker` из backend.
+При запуске Node.js напрямую запустите из корня `docker compose up -d postgres`, задайте `DATABASE_URL` в backend `.env` по примеру. Общий бот запускается вместе с backend; нужны токен и привязка через сайт. Для отправки ежедневной сводки в 21:00 Москвы отдельно запустите `npm run finance:worker` из backend.
 
-## Быстрый запуск
+## Запуск через Docker
+
+Нужны Docker Desktop или Docker Engine с [Compose 2.24+](https://docs.docker.com/compose/how-tos/environment-variables/set-environment-variables/). Все команды выполняются из корня репозитория.
+
+Создайте корневой `.env`, если его ещё нет:
+
+```sh
+test -f .env || cp .env.example .env
+```
+
+В Docker настройки читаются из корневого `.env`; `backend/.env` используется при запуске Node.js напрямую. Укажите API-ключи для нужных моделей и токен Telegram, если будете ими пользоваться. Без ключей доступны ручной учёт, расчёты, календарь и котировки; модели требуют настроенного провайдера. Для одного Telegram-токена запускайте только один backend.
+
+Соберите образы и запустите сайт, API и отдельную базу Postgres:
+
+```sh
+docker compose up -d --build --wait
+docker compose ps
+curl --fail http://localhost:5173/api/health
+```
+
+Сайт: **http://localhost:5173**. API доступен через `/api` на том же адресе. Миграции применяются при запуске backend. Dockerfile в корне содержит отдельные сборки `backend` и `frontend`; Nginx раздаёт сайт и проксирует API, включая потоки ответов агентов и долгое распознавание изображений.
+
+Если порты 5173 или 5432 уже заняты, задайте в корневом `.env` `APP_PORT=5174`, `POSTGRES_PORT=5433`, `PLANNING_PUBLIC_URL=http://localhost:5174`. После этого сайт и проверка здоровья доступны на порту 5174.
+
+Для демонстрационных финансовых данных:
+
+```sh
+docker compose exec backend node dist/backend/src/finance/manage.js --seed-demo
+```
+
+Откройте **http://localhost:5173/?financeProfile=demo** (либо выбранный `APP_PORT`). Команда заменяет только демопрофиль. У Docker отдельные базы и каталог чеков; локальные данные из `backend/data` и локального Postgres автоматически не переносятся.
+
+Для ежедневных сводок котировок задайте `TELEGRAM_BOT_TOKEN` и `TELEGRAM_BOT_USERNAME` в корневом `.env`, привяжите профиль на сайте и добавьте акции в список наблюдения. Затем включите дополнительный worker:
+
+```sh
+docker compose --profile notifications up -d --build
+```
+
+Просмотр логов и остановка:
+
+```sh
+docker compose logs -f backend frontend
+docker compose --profile notifications down
+```
+
+Именованные тома сохраняют Postgres, SQLite, ключ шифрования и чеки после остановки. После изменения `.env` пересоздайте backend командой `docker compose up -d --force-recreate backend`; если включён worker, также выполните `docker compose --profile notifications up -d --force-recreate finance-worker`.
+
+## Локальный запуск без Docker
 
 Node.js 24 LTS и npm. В первом терминале из корня репозитория:
 

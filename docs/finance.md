@@ -173,7 +173,7 @@ npm run build
 npm run finance:seed-demo
 ```
 
-`finance:seed-demo` сбрасывает **только** финансовый профиль `demo` и связанные с прежними демоплатежами задачи; `default` не меняется. Создаются история для пяти видов анализа, сохранённые отчёты без LLM, будущие платежи, акции SBER/GAZP и искусственный чек `backend/data/finance-demo/receipt-demo.png`. Сайт: `http://localhost:5173/?financeProfile=demo`; API: `?profileId=demo`. Полный сценарий — [finance-demo.md](finance-demo.md). Сброс привязанного к Telegram демопрофиля запрещён.
+`finance:seed-demo` сбрасывает **только** финансовый профиль `demo` и связанные с прежними демоплатежами задачи; `default` не меняется. Создаются история для пяти видов анализа, сохранённые отчёты без LLM, будущие платежи, акции SBER/GAZP и искусственный чек `backend/data/finance-demo/receipt-demo.png`. Сайт: `http://localhost:5173/?financeProfile=demo`; API: `?profileId=demo`. Сброс привязанного к Telegram демопрофиля запрещён.
 
 Чтобы выполнить проверку настоящей Postgres, задайте `FINANCE_TEST_DATABASE_URL` адресом отдельной тестовой базы и запустите `npm test`. Этот тест применяет миграции и создаёт профили с префиксом `test_`; без переменной он явно пропускается. Остальные тесты используют память, подставные модели и HTTP-ответы, без внешних вызовов и реальных сообщений.
 

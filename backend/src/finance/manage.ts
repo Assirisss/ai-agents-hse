@@ -24,7 +24,9 @@ try {
       await writeFile(resolve(directory, 'receipt-demo.png'), await createDemoReceipt(now))
       const summary = await new FinanceService(store, new MarketService()).summary('demo')
       console.log(JSON.stringify({ ...result, quotesAvailable: summary.quotes.filter(item => item.price !== null).length, receipt: 'backend/data/finance-demo/receipt-demo.png' }))
-      console.log('Демо: http://localhost:5173/?financeProfile=demo · сценарий показа: docs/finance-demo.md')
+      const demoUrl = new URL(process.env.PLANNING_PUBLIC_URL || 'http://localhost:5173')
+      demoUrl.searchParams.set('financeProfile', 'demo')
+      console.log(`Демо: ${demoUrl}`)
     } finally { planning.close() }
   } else console.log('Финансовые миграции применены')
 } finally {await store.close()}

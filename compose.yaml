@@ -1,12 +1,13 @@
 services:
   postgres:
     image: postgres:18-alpine
+    restart: unless-stopped
     environment:
       POSTGRES_DB: assistant
       POSTGRES_USER: assistant
       POSTGRES_PASSWORD: local-development-only
     ports:
-      - "127.0.0.1:5432:5432"
+      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
     volumes:
       - finance_postgres:/var/lib/postgresql
     healthcheck:
@@ -14,5 +15,54 @@ services:
       interval: 5s
       timeout: 3s
       retries: 10
+
+  backend: &backend-service
+    build:
+      context: .
+      target: backend
+    init: true
+    restart: unless-stopped
+    env_file:
+      - path: ${APP_ENV_FILE:-.env}
+        required: false
+    environment:
+      API_HOST: 0.0.0.0
+      PORT: "8787"
+      DATABASE_URL: postgresql://assistant:local-development-only@postgres:5432/assistant
+      TREND_MEMORY_PATH: data/trends.sqlite
+      PLANNING_DB_PATH: data/planning.sqlite
+      PLANNING_KEY_PATH: data/planning.key
+      FINANCE_RECEIPT_DIR: data/finance-receipts
+      PLANNING_PUBLIC_URL: ${PLANNING_PUBLIC_URL:-http://localhost:5173}
+    extra_hosts:
+      - host.docker.internal:host-gateway
+    volumes:
+      - assistant_data:/app/backend/data
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: .
+      target: frontend
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:${APP_PORT:-5173}:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+
+  finance-worker:
+    <<: *backend-service
+    profiles: [notifications]
+    command: ["node", "dist/backend/src/finance/worker-main.js"]
+    healthcheck:
+      disable: true
+    depends_on:
+      backend:
+        condition: service_healthy
+
 volumes:
   finance_postgres:
+  assistant_data:
