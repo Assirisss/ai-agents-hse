@@ -1,16 +1,25 @@
 import { useState } from 'react'
 import type { Exercise, HealthAiFood, HealthAiWorkout, MealItem, Product, Workout } from '../../../../shared/health'
+import { normalizeAiWorkoutEntry } from '../../../../shared/health-ai-workout.mts'
 import { healthApi } from './api'
 import { ProductFields } from './CatalogEditors'
 import { errorMessage, fmt, uid } from './format'
 
 export function WorkoutReview({ draft, date, note, exercises, onCatalog, onOpen }: { draft: HealthAiWorkout; date: string; note: string; exercises: Exercise[]; onCatalog: (value: Exercise[]) => void; onOpen: (value: Workout) => void }) {
-  const [rows, setRows] = useState(() => draft.entries.map(entry => ({ ...entry, exerciseId: entry.exerciseId ?? '' })))
+  const [rows, setRows] = useState(() => draft.entries.map(entry => normalizeAiWorkoutEntry(entry, exercises.find(exercise => exercise.id === entry.exerciseId))))
   const [creating, setCreating] = useState<number | null>(null)
   const [exerciseName, setExerciseName] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
-  const ready = rows.length > 0 && rows.every(row => exercises.some(item => item.id === row.exerciseId))
+  const ready = rows.length > 0 && rows.every(row => exercises.some(item => item.id === row.exerciseId && item.kind === row.kind && item.bodyweight === row.bodyweight))
+  function selectExercise(index: number, id: string) {
+    setRows(current => current.map((row, i) => i === index ? normalizeAiWorkoutEntry(row, exercises.find(exercise => exercise.id === id)) : row))
+    setCreating(null); setError('')
+  }
+  function changeType(index: number, kind: Exercise['kind'], bodyweight: boolean) {
+    setRows(current => current.map((row, i) => i === index ? normalizeAiWorkoutEntry({ ...row, kind, bodyweight }) : row))
+    setError('')
+  }
   async function createExercise() {
     if (creating === null || busy) return
     setBusy(true); setError('')
@@ -18,13 +27,15 @@ export function WorkoutReview({ draft, date, note, exercises, onCatalog, onOpen 
       const row = rows[creating]
       const exercise = await healthApi.save<Exercise>('exercises', { name: exerciseName, kind: row.kind, bodyweight: row.bodyweight })
       onCatalog([...exercises, exercise])
-      setRows(current => current.map((item, index) => index === creating ? { ...item, exerciseId: exercise.id } : item)); setCreating(null)
+      setRows(current => current.map((item, index) => index === creating ? normalizeAiWorkoutEntry(item, exercise) : item)); setCreating(null)
     } catch (cause) { setError(errorMessage(cause)) } finally { setBusy(false) }
   }
   return <div className="sp-stack"><h3>{draft.name}</h3><p className="sp-hint">Сопоставьте упражнения со справочником. В форме тренировки проверьте числа и заполните пропуски.</p>
     <fieldset disabled={busy} className="sp-stack">{rows.map((row, index) => <section className="sp-exercise-block" key={index}><div className="sp-section-title"><h3>{row.name}</h3><button type="button" className="sp-text" onClick={() => { setRows(items => items.filter((_, i) => i !== index)); setCreating(null) }}>Убрать</button></div>
       <p className="sp-hint">{row.kind === 'strength' ? row.sets.map(set => `${set.reps ?? '?'} повт. × ${set.weight ?? '?'} кг`).join(' · ') || 'Подходы не указаны' : `${row.minutes ?? '?'} мин${row.distanceKm === null ? '' : ` · ${row.distanceKm} км`}`}</p>
-      <label>Упражнение в справочнике<select value={row.exerciseId} onChange={event => setRows(items => items.map((item, i) => i === index ? { ...item, exerciseId: event.target.value } : item))}><option value="">Выберите упражнение</option>{exercises.filter(exercise => exercise.kind === row.kind && exercise.bodyweight === row.bodyweight).map(exercise => <option key={exercise.id} value={exercise.id}>{exercise.name}</option>)}</select></label>
+      <label>Упражнение в справочнике<select value={row.exerciseId ?? ''} onChange={event => selectExercise(index, event.target.value)}><option value="">Не сопоставлено · создать новое</option>{exercises.map(exercise => <option key={exercise.id} value={exercise.id}>{exercise.name}</option>)}</select></label>
+      {!row.exerciseId && <div className="sp-fields"><label>Тип упражнения<select value={row.kind} onChange={event => changeType(index, event.target.value as Exercise['kind'], row.bodyweight)}><option value="strength">Силовое</option><option value="cardio">Кардио</option></select></label><label className="sp-check"><input type="checkbox" checked={row.bodyweight} disabled={row.kind === 'cardio'} onChange={event => changeType(index, row.kind, event.target.checked)} />Собственный вес</label></div>}
+      <p className="sp-hint">{row.kind === 'cardio' ? 'Кардио: в форме заполните длительность; расстояние необязательно.' : 'Силовое: в форме проверьте подходы, повторения и дополнительный вес.'} При смене типа несовместимые поля очищаются; числа не переносятся между типами.</p>
       {creating === index ? <div className="sp-stack"><label>Название нового упражнения<input maxLength={120} value={exerciseName} onChange={e => setExerciseName(e.target.value)} /></label><p className="sp-hint">{row.kind === 'cardio' ? 'Кардио' : row.bodyweight ? 'Силовое с собственным весом' : 'Силовое с отягощением'}</p><div className="sp-inline"><button type="button" className="sp-secondary" disabled={!exerciseName.trim()} onClick={() => void createExercise()}>Сохранить в справочник</button><button type="button" className="sp-text" onClick={() => setCreating(null)}>Отмена</button></div></div> : <button type="button" className="sp-text" onClick={() => { setCreating(index); setExerciseName(row.name) }}>+ Создать это упражнение</button>}
     </section>)}</fieldset>
     {error && <p className="sp-error" role="alert">{error}</p>}

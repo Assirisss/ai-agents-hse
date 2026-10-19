@@ -19,7 +19,7 @@ const milliseconds = (value: unknown) => typeof value === 'number' && Number.isF
 export class HealthRunpodCompletion implements HealthCompletion {
   private readonly base: string
   constructor(endpoint: string, private readonly key: string, readonly model = HEALTH_MODEL, private readonly fetcher: typeof fetch = fetch, private readonly pollMs = 1000, private readonly timeoutMs = 300000) {
-    if (!/^[A-Za-z0-9_-]{1,80}$/.test(endpoint) || !key.trim()) throw new Error('Настройте HEALTH_RUNPOD_ENDPOINT_ID и RUNPOD_API_KEY')
+    if (!/^[A-Za-z0-9_-]{1,80}$/.test(endpoint) || !key.trim()) throw new Error('Настройте HEALTH_RUNPOD_ENDPOINT_ID и HEALTH_RUNPOD_API_KEY (или общий RUNPOD_API_KEY)')
     this.base = `https://api.runpod.ai/v2/${endpoint}`
   }
   private async request(path: string, signal: AbortSignal, body?: unknown) {

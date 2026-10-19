@@ -41,4 +41,5 @@ export type HealthAiResult = { message: string; questions: string[]; warnings: s
 export type HealthAiReply = { status: 'unavailable'; message: string; operation: HealthAiOperation } | (HealthAiResult & {
   status: 'completed'; model: string; promptTokens: number | null; completionTokens: number | null; executionMs: number | null; delayMs: number | null
 })
-export type HealthCapabilities = { ai: boolean; photoAttachments: true; provider: 'runpod' | null; model: string | null; monthlyRequests: { used: number; limit: number } }
+export type HealthAiUnavailable = { code: 'not-configured' | 'invalid-configuration'; message: string }
+export type HealthCapabilities = { ai: boolean; photoAttachments: true; provider: 'runpod' | null; model: string | null; monthlyRequests: { used: number; limit: number }; aiUnavailable: HealthAiUnavailable | null }

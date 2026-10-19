@@ -12,7 +12,7 @@ export class HealthService {
     if (!Number.isInteger(monthlyLimit) || monthlyLimit < 0 || monthlyLimit > 10000) throw new Error('HEALTH_AI_MONTHLY_REQUEST_LIMIT должен быть целым числом от 0 до 10000')
   }
   close() { for (const controller of this.active) controller.abort(); this.store.close() }
-  capabilities(): HealthCapabilities { return { ai: this.assistant.configured, photoAttachments: true, provider: this.assistant.configured ? 'runpod' : null, model: this.assistant.model, monthlyRequests: { used: this.store.aiUsage(), limit: this.monthlyLimit } } }
+  capabilities(): HealthCapabilities { return { ai: this.assistant.configured, aiUnavailable: this.assistant.unavailable, photoAttachments: true, provider: this.assistant.configured ? 'runpod' : null, model: this.assistant.model, monthlyRequests: { used: this.store.aiUsage(), limit: this.monthlyLimit } } }
   async assist(profile: string, operation: HealthAiOperation, body: unknown, signal: AbortSignal) {
     if (!this.assistant.configured) return this.assistant.run(operation)
     const input = healthAiInputSchema.parse({ ...(body && typeof body === 'object' && !Array.isArray(body) ? body : {}), operation })

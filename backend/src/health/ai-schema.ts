@@ -21,4 +21,5 @@ export const foodReplySchema = z.object({ ...common, food: z.object({ name,
   components: z.array(z.object({ name, productId: identifier.nullable(), estimatedGrams: nullableNumber(0.01, 100000) }).strict()).max(20),
   label: z.object({ name, brand: z.string().max(120), per100: nutrientsSchema.strict() }).strict().nullable(),
 }).strict() }).strict()
-export const progressReplySchema = z.object({ ...common, observations: z.array(z.object({ factId: identifier, text: z.string().min(1).max(800) }).strict()).max(12) }).strict()
+// Uniqueness and membership are checked against server-generated insights after parsing.
+export const progressReplySchema = z.object({ insightIds: z.array(identifier).min(1).max(12) }).strict()

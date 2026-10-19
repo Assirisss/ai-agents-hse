@@ -7,7 +7,9 @@ import { DatabaseSync } from 'node:sqlite'
 import sharp from 'sharp'
 import { HealthStore } from '../health/store.js'
 import { HealthService } from '../health/service.js'
-import { RunpodHealthAssistant, healthAssistantFromEnvironment, progressFacts } from '../health/ai.js'
+import { RunpodHealthAssistant } from '../health/ai.js'
+import { healthAiConfiguration } from '../health/config.js'
+import { progressFacts } from '../health/progress.js'
 import { HealthRunpodCompletion, type CompletionInput, type HealthCompletion } from '../health/runpod.js'
 import { createApp } from '../app.js'
 
@@ -119,7 +121,7 @@ void test('workout review questions reflect missing fields, not invented catalog
 })
 void test('progress uses computed data, omits private notes, and rejects unsupported references', async () => {
   let sent = ''
-  const s = service({ ...base, observations: [{ factId: 'nutrition-days', text: 'Записей недостаточно.' }] }, input => { sent = input.text })
+  const s = service({ insightIds: ['nutrition-days'] }, input => { sent = input.text })
   try {
     await s.save('default', 'wellbeing', { date, score: 4, note: 'Личная заметка' })
     const facts = progressFacts(s.store.state('default'), { operation: 'explain-progress', to: date, days: 7 })
@@ -128,7 +130,7 @@ void test('progress uses computed data, omits private notes, and rejects unsuppo
     assert.equal(reply.status, 'completed')
     assert.ok(!sent.includes('Личная заметка'))
   } finally { s.close() }
-  const invalid = service({ ...base, observations: [{ factId: 'invented', text: 'Неизвестно' }] })
+  const invalid = service({ insightIds: ['invented'] })
   try { await assert.rejects(invalid.assist('default', 'explain-progress', { to: date, days: 30 }, signal()), /проверку/) } finally { invalid.close() }
 })
 void test('quota persists on reopen and cannot be bypassed with another profile', async () => {
@@ -237,8 +239,7 @@ void test('assistant HTTP contract exposes capabilities and accepts validated dr
   } finally { await app.close() }
 })
 void test('health environment never falls back to other modules or providers', () => {
-  const previous = process.env.HEALTH_RUNPOD_ENDPOINT_ID
-  delete process.env.HEALTH_RUNPOD_ENDPOINT_ID
-  try { assert.equal(healthAssistantFromEnvironment().configured, false) }
-  finally { if (previous !== undefined) process.env.HEALTH_RUNPOD_ENDPOINT_ID = previous }
+  const config = healthAiConfiguration({ RUNPOD_LLM_ENDPOINT_ID: 'other', RUNPOD_API_KEY: 'test', OPENROUTER_API_KEY: 'test' })
+  assert.equal(config.assistant.configured, false)
+  assert.equal(config.assistant.unavailable?.code, 'not-configured')
 })

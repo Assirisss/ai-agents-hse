@@ -3,17 +3,19 @@ import { existsSync } from 'node:fs'
 import { loadEnvFile } from 'node:process'
 import assert from 'node:assert/strict'
 import sharp from 'sharp'
-import { healthAssistantFromEnvironment } from '../dist/backend/src/health/ai.js'
+import { healthAiConfiguration } from '../dist/backend/src/health/config.js'
+import { progressExplanation } from '../dist/backend/src/health/progress.js'
 import { HealthService } from '../dist/backend/src/health/service.js'
 import { HealthStore } from '../dist/backend/src/health/store.js'
 
 if (!process.argv.includes('--live')) {
-  console.log('This check sends five PAID Runpod requests. To run: node scripts/check-health-runpod.mjs --live [--only=workout,non-food,label,progress,suggestion]')
+  console.log('This check sends five PAID Runpod requests. To run: node scripts/check-health-runpod.mjs --live [--only=workout,non-food,label,progress,progress-populated,suggestion]')
   process.exit(0)
 }
 if (existsSync('.env')) loadEnvFile('.env')
-const names = ['workout', 'non-food', 'label', 'progress', 'suggestion']
-const selected = process.argv.find(arg => arg.startsWith('--only='))?.slice(7).split(',') ?? names
+const names = ['workout', 'non-food', 'label', 'progress', 'progress-populated', 'suggestion']
+const selected = process.argv.find(arg => arg.startsWith('--only='))?.slice(7).split(',') ?? names.filter(name => name !== 'progress-populated')
+assert.equal(new Set(selected).size, selected.length, 'Duplicate check names')
 assert.ok(selected.length && selected.every(name => names.includes(name)), 'Unknown check name')
 // Print job IDs and timings, never request headers, API keys, prompts or image bytes.
 const originalFetch = globalThis.fetch, terminalJobs = new Set()
@@ -29,9 +31,10 @@ globalThis.fetch = async (...args) => {
   }
   return response
 }
-const assistant = healthAssistantFromEnvironment()
-assert.ok(assistant.configured, 'Configure HEALTH_RUNPOD_ENDPOINT_ID and RUNPOD_API_KEY first')
-const service = new HealthService(new HealthStore(), assistant, selected.length)
+const config = healthAiConfiguration()
+assert.ok(config.assistant.configured, config.warning || 'Configure HEALTH_RUNPOD_ENDPOINT_ID and HEALTH_RUNPOD_API_KEY (or shared RUNPOD_API_KEY) first')
+assert.ok(config.monthlyLimit >= selected.length, 'Configured request cap is below the number of selected checks')
+const service = new HealthService(new HealthStore(), config.assistant, selected.length)
 const controller = new AbortController()
 process.once('SIGINT', () => controller.abort())
 const date = '2026-10-19'
@@ -68,9 +71,34 @@ try {
     const progress = await service.assist('default', 'explain-progress', { to: date, days: 7 }, controller.signal)
     assert.equal(progress.status, 'completed')
     assert.ok(progress.message.trim(), 'Empty periods still need an explanation')
-    assert.ok(progress.observations.every(item => progress.facts.some(fact => fact.id === item.factId)))
+    const expected = progressExplanation(before, { operation: 'explain-progress', to: date, days: 7 })
+    assert.deepEqual(progress.observations, expected.insights.map(({ factId, text }) => ({ factId, text })))
+    assert.equal(progress.message, expected.message)
     assert.equal(progress.facts.find(fact => fact.id === 'calories')?.value, null)
     report('progress', progress, progress.observations)
+  }
+  if (selected.includes('progress-populated')) {
+    const profile = 'progress-fixture'
+    const product = await service.save(profile, 'products', { name: 'Тестовый йогурт', per100: { calories: 70, protein: 5, fat: 2, carbs: 8 } })
+    await service.save(profile, 'meals', { name: 'Завтрак', date, kind: 'breakfast', items: [{ id: 'food', productId: product.id, grams: 150 }] })
+    await service.save(profile, 'workouts', { name: 'Тестовая прогулка', date, location: 'outdoors', entries: [{ id: 'walk', exerciseId: 'walking', sets: [], minutes: 20, distanceKm: null }] })
+    await service.save(profile, 'wellbeing', { date, score: 4, note: 'Синтетическая отметка' })
+    const snapshot = service.store.state(profile)
+    const request = { operation: 'explain-progress', to: date, days: 7, exerciseId: 'walking' }
+    const expected = progressExplanation(snapshot, request)
+    const progress = await service.assist(profile, 'explain-progress', request, controller.signal)
+    assert.equal(progress.status, 'completed')
+    assert.ok(progress.observations.length >= 1 && progress.observations.length <= 12)
+    assert.equal(new Set(progress.observations.map(item => JSON.stringify(item))).size, progress.observations.length)
+    for (const observation of progress.observations) assert.ok(expected.insights.some(item => item.factId === observation.factId && item.text === observation.text), 'Only server-generated explanations may be shown')
+    assert.equal(progress.message, expected.message)
+    assert.deepEqual(progress.questions, expected.questions)
+    assert.deepEqual(progress.warnings, expected.warnings)
+    assert.equal(progress.facts.find(fact => fact.id === 'workouts')?.value, 1)
+    assert.equal(progress.facts.find(fact => fact.id === 'calories')?.value, 105)
+    assert.equal(progress.facts.find(fact => fact.id === 'exercise-0-pace')?.value, null)
+    assert.deepEqual(service.store.state(profile), snapshot)
+    report('progress-populated', progress, progress.observations)
   }
   if (selected.includes('suggestion')) {
     const suggestion = await service.assist('default', 'suggest-workout', { date, text: 'Спокойная тренировка для начинающего без рабочих весов.', location: 'home', minutes: 20, equipment: 'Без оборудования, есть место для ходьбы', experience: 'beginner' }, controller.signal)
