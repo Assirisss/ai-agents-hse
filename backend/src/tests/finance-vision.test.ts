@@ -3,13 +3,45 @@ import test from 'node:test'
 import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import { setTimeout } from 'node:timers/promises'
 import { createApp } from '../app.js'
-import { FinanceModelError, FinanceReceiptVision, recognizeReceipt } from '../finance/models.js'
+import { FinanceModelError, FinanceReceiptVision, modelsFromEnv, recognizeReceipt } from '../finance/models.js'
 import { FinanceService } from '../finance/service.js'
 import { MemoryFinanceStore } from '../finance/store.js'
 
 const image = { bytes: Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Wl2bWQAAAAASUVORK5CYII=', 'base64'), mime: 'image/png' }
 const config = { model: 'test-vision', url: 'https://model.example/v1', apiKey: 'server-secret' }
+
+test('vision timeout is configurable and rejects unsupported limits', () => {
+  const env = { FINANCE_VISION_URL: config.url, FINANCE_VISION_MODEL: config.model }
+  assert.equal(modelsFromEnv(env).vision?.timeoutMs, 120_000)
+  assert.equal(modelsFromEnv({ ...env, FINANCE_VISION_TIMEOUT_MS: '180000' }).vision?.timeoutMs, 180_000)
+  for (const timeout of ['0', '-1', '999', '180001', 'NaN', '2000.5']) {
+    assert.throws(() => modelsFromEnv({ ...env, FINANCE_VISION_TIMEOUT_MS: timeout }))
+  }
+})
+
+test('a late model result after timeout cannot create a receipt draft or change money', async () => {
+  let resultReady = false
+  const store = new MemoryFinanceStore()
+  const receipt = { id: 'late-receipt', filename: 'test.png', mime: image.mime, hash: 'test', createdAt: new Date().toISOString(), duplicate: false }
+  await store.transact('timeout-review', data => { data.receipts.push(receipt) })
+  const lateResult = setTimeout(80).then(() => { resultReady = true; return { kind: 'expense' as const, amount: 10000, date: '2026-10-19' } })
+  const finance = new FinanceService(store, undefined, {
+    text: false, vision: true, async run() { throw new Error('unused') },
+    recognize: () => recognizeReceipt(image, { vision: { timeoutMs: 10, recognize: async () => lateResult } }),
+  })
+  finance.receiptImage = async () => ({ receipt, bytes: image.bytes })
+  const before = await store.read('timeout-review')
+  await assert.rejects(finance.recognize('timeout-review', receipt.id), (error: Error & { statusCode?: number }) => {
+    assert.equal(error.statusCode, 504)
+    assert.match(error.message, /время ожидания/)
+    return true
+  })
+  await lateResult
+  assert.equal(resultReady, true)
+  assert.deepEqual(await store.read('timeout-review'), before)
+})
 
 test('receipt API explains provider errors without leaking bodies or writing drafts; retry uses the uploaded image', async () => {
   const directory = await mkdtemp(join(tmpdir(), 'finance-vision-'))

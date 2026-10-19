@@ -72,3 +72,33 @@ test('vision limit keeps uploaded demo image available for retry and recognition
   expect(states.demo.drafts).toHaveLength(1)
   expect(states.demo.operations).toHaveLength(0)
 })
+
+test('receipt recognition keeps waiting beyond the previous 75-second browser deadline', async ({ page }) => {
+  await page.clock.install()
+  const { states } = await fixture(page)
+  let release!: () => void, started!: () => void
+  const recognitionStarted = new Promise<void>(resolve => { started = resolve })
+  const responseReady = new Promise<void>(resolve => { release = resolve })
+  await page.route('**/api/finance/receipts/*/recognize*', async route => {
+    started()
+    await responseReady
+    const draft: Draft = { id: 'slow-draft', receiptId: 'receipt-demo', kind: 'expense', amount: 125050, date: '2026-10-19', description: 'Медленное распознавание', source: 'receipt', status: 'pending', revision: 0, createdAt: '2026-10-19T10:00:00Z', missing: ['Счёт', 'Категория'], warnings: [] }
+    states.demo.drafts.push(draft)
+    await route.fulfill({ json: draft })
+  })
+  await page.goto('/?financeProfile=demo')
+  await page.getByRole('button', { name: 'Черновики и чеки', exact: true }).click()
+  await page.getByLabel('Фото чека', { exact: true }).setInputFiles({ name: 'receipt-demo.png', mimeType: 'image/png', buffer: png })
+  await page.getByRole('button', { name: 'Загрузить изображение', exact: true }).click()
+  const recognize = page.getByRole('button', { name: 'Распознать чек', exact: true })
+  await recognize.click()
+  await recognitionStarted
+  await page.clock.fastForward(80_000)
+  await expect(recognize).toBeDisabled()
+  await expect(page.getByRole('alert')).toHaveCount(0)
+  await expect(page.getByText('Распознаём чек (ожидание до 3 минут)…', { exact: true })).toBeVisible()
+  release()
+  await expect(page.getByLabel('Сумма, ₽', { exact: true }).filter({ visible: true })).toHaveValue('1250,50')
+  expect(states.demo.drafts).toHaveLength(1)
+  expect(states.demo.operations).toHaveLength(0)
+})

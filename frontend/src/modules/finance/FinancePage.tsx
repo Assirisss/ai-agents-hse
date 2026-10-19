@@ -67,13 +67,13 @@ export default function FinancePage() {
     return () => { active.current = false; for (const running of pendingControllers) running.abort(); pendingControllers.clear(); window.clearTimeout(timeout) }
   }, [from, to, revision, validDates])
 
-  const run: FinanceAction = async (label, action, success) => {
+  const run: FinanceAction = async (label, action, success, options) => {
     if (locked.current || !active.current) return false
     locked.current = true
     const epoch = generation.current
     const controller = new AbortController()
     controllers.current.add(controller)
-    const timeout = window.setTimeout(() => controller.abort(), 75000)
+    const timeout = window.setTimeout(() => controller.abort(), options?.timeoutMs ?? 75000)
     setBusy(label)
     setError('')
     setNotice('')
