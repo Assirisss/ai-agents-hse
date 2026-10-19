@@ -1,0 +1,41 @@
+{
+  "name": "graphite-health-qwen3-vl-8b",
+  "repo": "runpod-workers/worker-vllm",
+  "release": "v2.29.0",
+  "hubReleaseId": "cmuxgi0a3000407jv5igk1ezr",
+  "image": "registry.runpod.net/runpod-workers-worker-vllm-main-dockerfile:b7212acc6",
+  "verifiedImageDigest": "sha256:a218acc3f5032d2bc1b9104b613b5ed0bf34bcd6b7c561396d17a60aa4b7962c",
+  "model": "Qwen/Qwen3-VL-8B-Instruct",
+  "gpuPool": "AMPERE_48",
+  "allowedCudaVersions": ["13.0"],
+  "gpuTypeIds": [
+    "NVIDIA A40",
+    "NVIDIA RTX A6000"
+  ],
+  "gpuCount": 1,
+  "workersMin": 0,
+  "workersMax": 1,
+  "idleTimeout": 1,
+  "flashboot": true,
+  "executionTimeoutMs": 90000,
+  "containerDiskInGb": 40,
+  "networkVolumeId": null,
+  "env": {
+    "MODEL_NAME": "Qwen/Qwen3-VL-8B-Instruct",
+    "MODEL_REVISION": "0c351dd01ed87e9c1b53cbc748cba10e6187ff3b",
+    "TOKENIZER_REVISION": "0c351dd01ed87e9c1b53cbc748cba10e6187ff3b",
+    "DTYPE": "half",
+    "MAX_MODEL_LEN": "16384",
+    "MAX_NUM_SEQS": "1",
+    "MAX_CONCURRENCY": "1",
+    "GPU_MEMORY_UTILIZATION": "0.85",
+    "ENFORCE_EAGER": "true",
+    "VLLM_STARTUP_TIMEOUT": "300",
+    "HF_HUB_DISABLE_TELEMETRY": "1",
+    "DISABLE_LOG_STATS": "true",
+    "MAX_NUM_BATCHED_TOKENS": "8192",
+    "LIMIT_MM_PER_PROMPT": "{\"image\":1,\"video\":0}",
+    "ENABLE_LOG_REQUESTS": "false",
+    "ENABLE_LOG_OUTPUTS": "false"
+  }
+}

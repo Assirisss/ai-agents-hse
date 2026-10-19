@@ -22,4 +22,23 @@ export type HealthDay = { date: string; nutrition: Nutrients | null; workouts: n
 export type ExercisePoint = { date: string; mode: 'weighted' | 'bodyweight' | 'cardio'; sets: number; reps: number; maxWeight: number | null; volume: number | null; minutes: number; distanceKm: number | null; pace: number | null }
 export type HealthStats = { days: HealthDay[]; workoutCount: number; cardioMinutes: number; distanceKm: number; exercisePoints: ExercisePoint[] }
 export type HealthAiOperation = 'parse-workout' | 'recognize-food' | 'explain-progress' | 'suggest-workout'
-export type HealthAiReply = { status: 'unavailable'; message: string; operation: HealthAiOperation }
+export type HealthAiInput =
+  | { operation: 'parse-workout'; text: string; date: string }
+  | { operation: 'recognize-food'; text: string; photo: string; mode: 'dish' | 'label'; date: string }
+  | { operation: 'explain-progress'; to: string; days: 7 | 30 | 90; exerciseId?: string }
+  | { operation: 'suggest-workout'; text: string; date: string; location: Workout['location']; minutes: number; equipment: string; experience: 'beginner' | 'regular' }
+export type HealthAiWorkout = { name: string; location: Workout['location']; entries: {
+  exerciseId: string | null; name: string; kind: Exercise['kind']; bodyweight: boolean;
+  sets: { reps: number | null; weight: number | null }[]; minutes: number | null; distanceKm: number | null
+}[] }
+export type HealthAiFood = { name: string; components: { name: string; productId: string | null; estimatedGrams: number | null }[]; label: { name: string; brand: string; per100: Nutrients } | null }
+export type HealthAiFact = { id: string; label: string; value: number | null; unit: string }
+export type HealthAiResult = { message: string; questions: string[]; warnings: string[] } & (
+  | { operation: 'parse-workout' | 'suggest-workout'; workout: HealthAiWorkout }
+  | { operation: 'recognize-food'; food: HealthAiFood }
+  | { operation: 'explain-progress'; observations: { factId: string; text: string }[]; facts: HealthAiFact[] }
+)
+export type HealthAiReply = { status: 'unavailable'; message: string; operation: HealthAiOperation } | (HealthAiResult & {
+  status: 'completed'; model: string; promptTokens: number | null; completionTokens: number | null; executionMs: number | null; delayMs: number | null
+})
+export type HealthCapabilities = { ai: boolean; photoAttachments: true; provider: 'runpod' | null; model: string | null; monthlyRequests: { used: number; limit: number } }

@@ -24,15 +24,27 @@ export class HealthStore {
     if (path !== ':memory:') chmodSync(path, 0o600)
     this.db.exec('PRAGMA foreign_keys=ON; PRAGMA journal_mode=WAL; PRAGMA busy_timeout=5000;')
     const version = Number(this.db.prepare('PRAGMA user_version').get()!.user_version)
-    if (version > 1) { this.db.close(); throw new Error('База спорта создана более новой версией приложения') }
+    if (version > 2) { this.db.close(); throw new Error('База спорта создана более новой версией приложения') }
     if (version === 0) this.transaction(() => this.db.exec(`
       CREATE TABLE profiles (id TEXT PRIMARY KEY, settings TEXT);
       CREATE TABLE records (profile TEXT NOT NULL REFERENCES profiles(id), kind TEXT NOT NULL, id TEXT NOT NULL, value TEXT NOT NULL, PRIMARY KEY(profile,kind,id));
       CREATE TABLE photos (profile TEXT NOT NULL, kind TEXT NOT NULL DEFAULT 'meals' CHECK(kind='meals'), id TEXT NOT NULL, data BLOB NOT NULL,
         PRIMARY KEY(profile,id), FOREIGN KEY(profile,kind,id) REFERENCES records(profile,kind,id) ON DELETE CASCADE);
       PRAGMA user_version=1;`))
+    if (version < 2) this.transaction(() => this.db.exec(`
+      CREATE TABLE ai_usage (month TEXT PRIMARY KEY, requests INTEGER NOT NULL DEFAULT 0);
+      PRAGMA user_version=2;`))
   }
   close() { if (!this.closed) { this.closed = true; this.db.close() } }
+  aiUsage(month = new Date().toISOString().slice(0, 7)) {
+    return Number(this.db.prepare('SELECT requests FROM ai_usage WHERE month=?').get(month)?.requests ?? 0)
+  }
+  reserveAiRequest(limit: number, month = new Date().toISOString().slice(0, 7)) {
+    this.transaction(() => {
+      if (this.aiUsage(month) >= limit) throw new HealthError('Месячный лимит AI-запросов исчерпан. Ручной дневник доступен.', 429)
+      this.db.prepare('INSERT INTO ai_usage(month,requests) VALUES(?,1) ON CONFLICT(month) DO UPDATE SET requests=requests+1').run(month)
+    })
+  }
   transaction<T>(work: () => T): T {
     this.db.exec('BEGIN IMMEDIATE')
     try { const result = work(); this.db.exec('COMMIT'); return result } catch (error) { this.db.exec('ROLLBACK'); throw error }

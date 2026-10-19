@@ -1,14 +1,27 @@
 import { randomUUID } from 'node:crypto'
-import type { Exercise, Product, Meal, Workout, WorkoutEntry, WorkoutTemplate, HealthCollection } from '../../../shared/health.js'
+import type { Exercise, Product, Meal, Workout, WorkoutEntry, WorkoutTemplate, HealthCollection, HealthAiOperation, HealthCapabilities } from '../../../shared/health.js'
 import { HealthStore } from './store.js'
 import { exerciseSchema, productSchema, workoutSchema, templateSchema, mealSchema, wellbeingSchema, settingsSchema, HealthError } from './schema.js'
 import { prepareMealPhoto } from './photos.js'
-import { UnavailableHealthAssistant } from './ai.js'
+import { UnavailableHealthAssistant, type HealthAssistant } from './ai.js'
+import { healthAiInputSchema } from './ai-schema.js'
 
 export class HealthService {
-  readonly assistant = new UnavailableHealthAssistant()
-  constructor(readonly store: HealthStore) {}
-  close() { this.store.close() }
+  private readonly active = new Set<AbortController>()
+  constructor(readonly store: HealthStore, readonly assistant: HealthAssistant = new UnavailableHealthAssistant(), private readonly monthlyLimit = 100) {
+    if (!Number.isInteger(monthlyLimit) || monthlyLimit < 0 || monthlyLimit > 10000) throw new Error('HEALTH_AI_MONTHLY_REQUEST_LIMIT должен быть целым числом от 0 до 10000')
+  }
+  close() { for (const controller of this.active) controller.abort(); this.store.close() }
+  capabilities(): HealthCapabilities { return { ai: this.assistant.configured, photoAttachments: true, provider: this.assistant.configured ? 'runpod' : null, model: this.assistant.model, monthlyRequests: { used: this.store.aiUsage(), limit: this.monthlyLimit } } }
+  async assist(profile: string, operation: HealthAiOperation, body: unknown, signal: AbortSignal) {
+    if (!this.assistant.configured) return this.assistant.run(operation)
+    const input = healthAiInputSchema.parse({ ...(body && typeof body === 'object' && !Array.isArray(body) ? body : {}), operation })
+    if (this.active.size) throw new HealthError('Уже выполняется AI-запрос. Дождитесь его окончания или отмените.', 429)
+    const controller = new AbortController()
+    this.active.add(controller)
+    try { return await this.assistant.run(operation, { input, state: this.store.state(profile), signal: AbortSignal.any([signal, controller.signal]), beforeSubmit: () => this.store.reserveAiRequest(this.monthlyLimit) }) }
+    finally { this.active.delete(controller) }
+  }
   async save(profile: string, kind: HealthCollection, body: unknown, id?: string): Promise<unknown> {
     this.store.ensureProfile(profile)
     if (id) this.store.require(profile, kind, id)

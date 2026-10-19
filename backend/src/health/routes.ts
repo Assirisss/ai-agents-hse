@@ -9,10 +9,15 @@ const id = (request: FastifyRequest) => z.object({ id: identifier }).parse(reque
 export function registerHealthRoutes(app: FastifyInstance, service: HealthService) {
   const base = '/api/sport'
   app.get(`${base}/state`, async request => service.store.state(profile(request)))
-  app.get(`${base}/capabilities`, async () => ({ ai: false, photoAttachments: true }))
-  app.post(`${base}/assistant/:operation`, async request => {
+  app.get(`${base}/capabilities`, async () => service.capabilities())
+  app.post(`${base}/assistant/:operation`, { bodyLimit: 9 * 1024 * 1024 }, async (request, reply) => {
     const { operation } = z.object({ operation: z.enum(['parse-workout', 'recognize-food', 'explain-progress', 'suggest-workout']) }).parse(request.params)
-    return service.assistant.run(operation)
+    const controller = new AbortController()
+    const abort = () => { if (!reply.raw.writableFinished) controller.abort() }
+    reply.raw.once('close', abort)
+    request.raw.once('aborted', abort)
+    try { return await service.assist(profile(request), operation, request.body, controller.signal) }
+    finally { reply.raw.off('close', abort); request.raw.off('aborted', abort) }
   })
   app.get(`${base}/settings`, async request => { const p = profile(request); service.store.ensureProfile(p); return service.store.settings(p) })
   app.put(`${base}/settings`, async request => service.settings(profile(request), request.body))
@@ -37,5 +42,5 @@ export function registerHealthRoutes(app: FastifyInstance, service: HealthServic
     if (!data) throw new HealthError('Фото не найдено', 404)
     return reply.type('image/webp').header('X-Content-Type-Options', 'nosniff').send(Buffer.from(data))
   })
-  app.addHook('onClose', async () => service.close())
+  app.addHook('preClose', async () => service.close())
 }

@@ -6,16 +6,17 @@ import { ProductFields } from './CatalogEditors'
 import { EditorDialog, NutritionCards } from './ui'
 import { blankProduct, errorMessage, fmt, mealLabels, uid } from './format'
 
-export default function MealEditor({ meal, date, products, onClose, onSaved }: { meal: Meal | null; date: string; products: Product[]; onClose: () => void; onSaved: () => Promise<void> }) {
-  const [name, setName] = useState(meal?.name ?? '')
-  const [day, setDay] = useState(meal?.date ?? date)
+export type MealEditorSeed = { name: string; date: string; note: string; items: MealItem[]; photo: string }
+export default function MealEditor({ meal, seed, date, products, onClose, onSaved }: { meal: Meal | null; seed?: MealEditorSeed; date: string; products: Product[]; onClose: () => void; onSaved: () => Promise<void> }) {
+  const [name, setName] = useState(meal?.name ?? seed?.name ?? '')
+  const [day, setDay] = useState(meal?.date ?? seed?.date ?? date)
   const [kind, setKind] = useState<MealKind>(meal?.kind ?? 'breakfast')
-  const [note, setNote] = useState(meal?.note ?? '')
-  const [items, setItems] = useState<MealItem[]>(() => structuredClone(meal?.items ?? []))
+  const [note, setNote] = useState(meal?.note ?? seed?.note ?? '')
+  const [items, setItems] = useState<MealItem[]>(() => structuredClone(meal?.items ?? seed?.items ?? []))
   const [catalog, setCatalog] = useState(products)
   const [chosen, setChosen] = useState(products[0]?.id ?? '')
   const [grams, setGrams] = useState(100)
-  const [photo, setPhoto] = useState<string | null | undefined>()
+  const [photo, setPhoto] = useState<string | null | undefined>(seed?.photo)
   const [reading, setReading] = useState(false)
   const photoRequest = useRef(0)
   const [error, setError] = useState('')
@@ -55,7 +56,7 @@ export default function MealEditor({ meal, date, products, onClose, onSaved }: {
     await healthApi.save('meals', { name: name.trim() || mealLabels[kind], date: day, kind, note, items, photo }, meal?.id); await onSaved()
   }} onDelete={meal ? async () => { await healthApi.remove('meals', meal.id); await onSaved() } : undefined}>
     <div className="sp-fields"><label>Дата<input type="date" required value={day} onChange={e => setDay(e.target.value)} /></label><label>Приём пищи<select value={kind} onChange={e => setKind(e.target.value as MealKind)}>{Object.entries(mealLabels).map(([key, text]) => <option key={key} value={key}>{text}</option>)}</select></label></div><label>Название · необязательно<input maxLength={120} value={name} onChange={e => setName(e.target.value)} placeholder={mealLabels[kind]} /></label>
-    <section className="sp-photo-section">{preview ? <img src={preview} alt="Фото приёма пищи" /> : <div className="sp-photo-placeholder">Фото блюда</div>}<div><h3>Добавьте фотографию</h3><p className="sp-hint">Фото сохранится в дневнике. Распознавание пока недоступно — укажите продукты и массу вручную.</p><label className="sp-file">{reading ? 'Чтение…' : preview ? 'Заменить фото' : 'Выбрать фото'}<input type="file" accept="image/jpeg,image/png,image/webp" disabled={reading} onChange={e => { void readPhoto(e.target.files?.[0]); e.target.value = '' }} /></label>{preview && <button className="sp-text" type="button" onClick={() => { photoRequest.current++; setReading(false); setPhoto(null) }}>Убрать фото</button>}<p className="sp-hint">JPEG, PNG, WebP · до 6 МиБ</p></div></section>
+    <section className="sp-photo-section">{preview ? <img src={preview} alt="Фото приёма пищи" /> : <div className="sp-photo-placeholder">Фото блюда</div>}<div><h3>Добавьте фотографию</h3><p className="sp-hint">Фото сохранится в дневнике. Для распознавания откройте вкладку «Тренер»; выбор файла сам по себе не отправляет его модели.</p><label className="sp-file">{reading ? 'Чтение…' : preview ? 'Заменить фото' : 'Выбрать фото'}<input type="file" accept="image/jpeg,image/png,image/webp" disabled={reading} onChange={e => { void readPhoto(e.target.files?.[0]); e.target.value = '' }} /></label>{preview && <button className="sp-text" type="button" onClick={() => { photoRequest.current++; setReading(false); setPhoto(null) }}>Убрать фото</button>}<p className="sp-hint">JPEG, PNG, WebP · до 6 МиБ</p></div></section>
     <div className="sp-section-title"><h3>Состав</h3><span>{items.length} продуктов</span></div>
     {items.map(item => <div key={item.id} className="sp-meal-item"><div><strong>{item.product.name}</strong><small>{item.product.brand || 'Свой продукт'} · {fmt(item.product.per100.calories)} ккал / 100 г</small></div><label>Масса, г<input aria-label={`Масса: ${item.product.name}`} type="number" required min="0.01" max="100000" step="any" value={Number.isNaN(item.grams) ? '' : item.grams} onChange={e => setItems(current => current.map(row => row.id === item.id ? { ...row, grams: e.target.valueAsNumber } : row))} /></label><button type="button" className="sp-text" aria-label={`Убрать ${item.product.name}`} onClick={() => setItems(current => current.filter(row => row.id !== item.id))}>×</button></div>)}
     <div className="sp-inline"><label className="sp-grow">Продукт<select value={chosen} onChange={e => setChosen(e.target.value)}>{!catalog.length && <option value="">Создайте первый продукт</option>}{catalog.map(product => <option key={product.id} value={product.id}>{product.name}{product.brand ? ` · ${product.brand}` : ''}</option>)}</select></label><label className="sp-small-field">Масса, г<input type="number" min="0.01" max="100000" step="any" value={Number.isNaN(grams) ? '' : grams} onChange={e => setGrams(e.target.valueAsNumber)} /></label><button type="button" className="sp-secondary" disabled={!catalog.length} onClick={add}>Добавить</button></div>

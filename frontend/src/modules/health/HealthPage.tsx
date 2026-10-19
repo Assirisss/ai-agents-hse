@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import type { Exercise, HealthAiOperation, HealthSettings, HealthState, Meal, Product, Workout, WorkoutTemplate } from '../../../../shared/health'
+import type { Exercise, HealthSettings, HealthState, Meal, Product, Workout, WorkoutTemplate } from '../../../../shared/health'
 import { daySummary, mealNutrition, shiftDate, todayInZone } from '../../../../shared/health-math.mts'
 import { healthApi } from './api'
 import { ExerciseEditor, ProductEditor, SettingsEditor, WellbeingEditor } from './CatalogEditors'
@@ -7,11 +7,12 @@ import WorkoutEditor from './WorkoutEditor'
 import type { WorkoutEditorSeed } from './WorkoutEditor'
 import MealEditor from './MealEditor'
 import ProgressView from './ProgressView'
+import AssistantPanel from './AssistantPanel'
 import { Empty, Icon, NutritionCards } from './ui'
 import { displayDate, errorMessage, fmt, locationLabels, mealLabels } from './format'
 import './health.css'
 
-const tabs = [{ id: 'today', label: 'Сегодня', icon: 'sun' }, { id: 'workouts', label: 'Тренировки', icon: 'activity' }, { id: 'nutrition', label: 'Питание', icon: 'food' }, { id: 'progress', label: 'Прогресс', icon: 'chart' }, { id: 'assistant', label: 'Помощник', icon: 'sparkles' }] as const
+const tabs = [{ id: 'today', label: 'Сегодня', icon: 'sun' }, { id: 'workouts', label: 'Тренировки', icon: 'activity' }, { id: 'nutrition', label: 'Питание', icon: 'food' }, { id: 'progress', label: 'Прогресс', icon: 'chart' }, { id: 'assistant', label: 'Тренер', icon: 'sparkles' }] as const
 type View = typeof tabs[number]['id']
 type Editor = { kind: 'workout'; seed: WorkoutEditorSeed } | { kind: 'meal'; meal: Meal | null } | { kind: 'product'; product: Product | null } | { kind: 'exercise'; exercise: Exercise | null } | { kind: 'settings' } | { kind: 'wellbeing' }
 const browserZone = () => Intl.DateTimeFormat().resolvedOptions().timeZone || 'Europe/Moscow'
@@ -31,7 +32,6 @@ export default function HealthPage() {
   const [catalogQuery, setCatalogQuery] = useState('')
   const [workoutTab, setWorkoutTab] = useState<'history' | 'templates' | 'exercises'>('history')
   const [nutritionTab, setNutritionTab] = useState<'diary' | 'products'>('diary')
-  const [assistantBusy, setAssistantBusy] = useState(false)
   const settings = state?.settings ?? defaultSettings()
   useEffect(() => {
     const controller = new AbortController()
@@ -61,11 +61,6 @@ export default function HealthPage() {
   function cloneWorkout(value: Workout | WorkoutTemplate, source: 'workouts' | 'templates', target: 'workouts' | 'templates') {
     setEditor({ kind: 'workout', seed: { kind: target, value, source: { kind: source, id: value.id } } })
   }
-  async function assistant(operation: HealthAiOperation) {
-    if (assistantBusy) return
-    setAssistantBusy(true)
-    try { const reply = await healthApi.assistant(operation); setNotice(reply.message) } catch (cause) { setError(errorMessage(cause)) } finally { setAssistantBusy(false) }
-  }
   const summary = state ? daySummary(state, date) : null
   const ready = Boolean(state) && !loading && !error
   const dateControl = <div className="sp-date-control"><button className="sp-secondary" aria-label="Предыдущий день" disabled={date <= '1900-01-01'} onClick={() => setDate(shiftDate(date, -1))}>‹</button><label className="sp-sr-only" htmlFor="sp-date">Дата дневника</label><input id="sp-date" type="date" min="1900-01-01" max="2200-12-31" value={date} onChange={e => { if (e.target.validity.valid && e.target.value) setDate(e.target.value) }} /><button className="sp-secondary" aria-label="Следующий день" disabled={date >= '2200-12-31'} onClick={() => setDate(shiftDate(date, 1))}>›</button><button className="sp-text" onClick={() => setDate(today)}>Сегодня</button></div>
@@ -91,7 +86,7 @@ export default function HealthPage() {
       </div>}
       {view === 'nutrition' && <div className="sp-stack"><div className="sp-section-title"><h2>Питание в вашем ритме</h2><div className="sp-segments"><button aria-pressed={nutritionTab === 'diary'} className={nutritionTab === 'diary' ? 'is-active' : ''} onClick={() => setNutritionTab('diary')}>Дневник</button><button aria-pressed={nutritionTab === 'products'} className={nutritionTab === 'products' ? 'is-active' : ''} onClick={() => setNutritionTab('products')}>Мои продукты</button></div></div>{nutritionTab === 'diary' ? <>{dateControl}<NutritionCards value={summary.nutrition} goals={settings.goals} />{mealList(summary.meals)}</> : <><div className="sp-section-title"><label className="sp-grow">Поиск по продуктам<input type="search" placeholder="Название или марка" value={catalogQuery} onChange={e => setCatalogQuery(e.target.value)} /></label><button className="sp-secondary" onClick={() => setEditor({ kind: 'product', product: null })}>+ Продукт</button></div>{state.products.length ? <div className="sp-catalog-grid">{state.products.filter(item => `${item.name} ${item.brand}`.toLocaleLowerCase().includes(catalogQuery.toLocaleLowerCase())).map(product => <button className="sp-catalog-item" key={product.id} onClick={() => setEditor({ kind: 'product', product })}><Icon name="food" /><span><strong>{product.name}</strong><small>{product.brand || 'Свой продукт'} · {fmt(product.per100.calories)} ккал / 100 г</small></span><Icon name="arrow" size={16} /></button>)}</div> : <Empty title="Знакомые продукты — под рукой" action={<button className="sp-secondary" onClick={() => setEditor({ kind: 'product', product: null })}>Создать продукт</button>}>Введите КБЖУ с упаковки один раз и используйте продукт в дневнике.</Empty>}{state.products.length > 0 && !state.products.some(item => `${item.name} ${item.brand}`.toLocaleLowerCase().includes(catalogQuery.toLocaleLowerCase())) && <p className="sp-hint">По этому запросу ничего не найдено.</p>}</>}</div>}
       {view === 'progress' && <div className="sp-stack">{dateControl}<ProgressView state={state} date={date} /></div>}
-      {view === 'assistant' && <div className="sp-stack"><div className="sp-assistant-heading"><span className="sp-empty-icon"><Icon name="sparkles" size={28} /></span><h2>Помощник, который будет рядом</h2><p>AI пока не подключён. А дневник, ваши шаблоны и расчёты уже работают.</p></div><div className="sp-catalog-grid sp-assistant-grid">{([{ operation: 'parse-workout', title: 'Записать тренировку словами', description: 'Превратить описание упражнений в аккуратную запись.', action: 'Записать вручную', run: newWorkout }, { operation: 'recognize-food', title: 'Узнать состав блюда по фото', description: 'Предположить продукты и уточнить размер порции.', action: 'Добавить еду и фото', run: newMeal }, { operation: 'explain-progress', title: 'Понять свой прогресс', description: 'Обсудить изменения на основе записей дневника.', action: 'Открыть статистику', run: () => navigate('progress') }, { operation: 'suggest-workout', title: 'Спланировать следующую тренировку', description: 'Подобрать вариант с учётом ваших предпочтений.', action: 'Открыть шаблоны', run: () => { navigate('workouts'); setWorkoutTab('templates') } }] as const).map(item => <article className="sp-card" key={item.operation}><span className="sp-badge">Скоро</span><h3>{item.title}</h3><p className="sp-hint">{item.description}</p><button className="sp-text" disabled={assistantBusy} onClick={() => void assistant(item.operation)}>AI пока недоступен</button><button className="sp-secondary" onClick={item.run}>{item.action}</button></article>)}</div></div>}
+      {view === 'assistant' && <AssistantPanel state={state} date={date} onSaved={saved} onCatalogChange={patch => setState(current => current ? { ...current, ...patch } : current)} />}
     </div>}
     {editor?.kind === 'workout' && state && <WorkoutEditor seed={editor.seed} date={date} exercises={state.exercises} onClose={() => { setEditor(null); reload() }} onSaved={saved} />}
     {editor?.kind === 'meal' && state && <MealEditor meal={editor.meal} date={date} products={state.products} onClose={() => { setEditor(null); reload() }} onSaved={saved} />}

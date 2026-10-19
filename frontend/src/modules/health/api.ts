@@ -1,4 +1,4 @@
-import type { HealthAiOperation, HealthAiReply, HealthCollection, HealthSettings, HealthState } from '../../../../shared/health'
+import type { HealthAiInput, HealthAiReply, HealthCapabilities, HealthCollection, HealthSettings, HealthState } from '../../../../shared/health'
 const base = '/api/sport'
 async function request<T>(path: string, method = 'GET', body?: unknown, signal?: AbortSignal): Promise<T> {
   let response: Response
@@ -13,6 +13,7 @@ export const healthApi = {
   save: <T>(kind: HealthCollection, body: unknown, id?: string) => request<T>(`/${kind}${id ? `/${encodeURIComponent(id)}` : ''}`, id ? 'PUT' : 'POST', body),
   remove: (kind: HealthCollection, id: string) => request(`/${kind}/${encodeURIComponent(id)}`, 'DELETE'),
   settings: (value: HealthSettings) => request<HealthSettings>('/settings', 'PUT', value),
-  assistant: (operation: HealthAiOperation) => request<HealthAiReply>(`/assistant/${operation}`, 'POST', {}),
+  capabilities: (signal?: AbortSignal) => request<HealthCapabilities>('/capabilities', 'GET', undefined, signal),
+  assistant: (input: HealthAiInput, signal: AbortSignal) => { const { operation, ...body } = input; return request<HealthAiReply>(`/assistant/${operation}`, 'POST', body, signal) },
   photo: (id: string, version: string | null) => `${base}/meals/${encodeURIComponent(id)}/photo?v=${encodeURIComponent(version ?? '')}`,
 }
